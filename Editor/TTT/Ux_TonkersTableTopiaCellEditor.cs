@@ -7,7 +7,6 @@ using static UnityEngine.GraphicsBuffer;
 [CustomEditor(typeof(Ux_TonkersTableTopiaCell))]
 public class Ux_TonkersTableTopiaCellEditor : Editor
 {
-    // Serialized props (kept for completeness; direct object fields are also used)
     private SerializedProperty rowIndexProp, colIndexProp, rowSpanProp, colSpanProp, isMergedProp, mergedIntoProp;
 
     private SerializedProperty bgImageProp, bgColorProp;
@@ -24,7 +23,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         bgColorProp = serializedObject.FindProperty("backgroundColorLikeASunset");
     }
 
-    // TonkersTableTopiaCellEditor
     public override void OnInspectorGUI()
     {
         var cell = (Ux_TonkersTableTopiaCell)target;
