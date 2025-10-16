@@ -15,7 +15,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private static bool showPreview = true;
     private static bool sceneHighlight = true;
-    private static bool resizeMode = false;
 
     private static int dragCol = -1, dragRow = -1;
 
@@ -37,10 +36,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private static int _lastInspectedTableId = 0;
 
+    private enum EditorActionMode
+    { HighlightCells = 0, Resize = 1, SelectObjects = 2 }
+
+    private static EditorActionMode actionMode = EditorActionMode.HighlightCells;
+    private static readonly string PREF_ActionMode = "TTT_ActionMode";
+
     private void OnEnable()
     {
         table = (Ux_TonkersTableTopiaLayout)target;
         EnsureDefaultSelection();
+        actionMode = (EditorActionMode)EditorPrefs.GetInt(PREF_ActionMode, (int)EditorActionMode.HighlightCells);
     }
 
     public override void OnInspectorGUI()
@@ -55,17 +61,31 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             {
                 showPreview = EditorGUILayout.ToggleLeft("WYSIWYG Preview", showPreview, GUILayout.Width(140));
                 sceneHighlight = EditorGUILayout.ToggleLeft("Scene Highlight", sceneHighlight, GUILayout.Width(130));
-                resizeMode = EditorGUILayout.ToggleLeft("Resize Mode", resizeMode, GUILayout.Width(100));
             }
+
+            int mode = GUILayout.Toolbar(
+                (int)actionMode,
+                new[] { new GUIContent("Highlight"), new GUIContent("Resize"), new GUIContent("Select") },
+                EditorStyles.miniButton
+            );
+            if (mode != (int)actionMode)
+            {
+                actionMode = (EditorActionMode)mode;
+                EditorPrefs.SetInt(PREF_ActionMode, (int)actionMode);
+                Repaint();
+            }
+
+            EditorGUILayout.HelpBox("Tip: hold Shift to add to the highlight selection.", MessageType.Info);
+
             float hZoom = EditorPrefs.GetFloat("Ux_HZoom", 1f);
             float vZoom = EditorPrefs.GetFloat("Ux_VZoom", 1f);
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUILayout.Label("VZoom", GUILayout.Width(48));
-                vZoom = EditorGUILayout.Slider(vZoom, 0.25f, 4f);
+                vZoom = EditorGUILayout.Slider(vZoom, 0.1f, 8f);
                 GUILayout.Space(10);
                 GUILayout.Label("HZoom", GUILayout.Width(48));
-                hZoom = EditorGUILayout.Slider(hZoom, 0.25f, 4f);
+                hZoom = EditorGUILayout.Slider(hZoom, 0.1f, 8f);
             }
             EditorPrefs.SetFloat("Ux_HZoom", hZoom);
             EditorPrefs.SetFloat("Ux_VZoom", vZoom);
@@ -75,7 +95,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
         EditorGUILayout.Space(6);
         DrawTableSizeControls();
-
         EditorGUILayout.Space(6);
         DrawTableTools();
         EditorGUILayout.Space(6);
@@ -91,6 +110,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             EditorUtility.SetDirty(table);
             table.FlagLayoutAsNeedingSpaDay();
         }
+
         serializedObject.ApplyModifiedProperties();
     }
 
@@ -486,28 +506,34 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     Handles.DrawAAPolyLine(2.5f, new Vector3(cellRect.xMin, cellRect.yMax), new Vector3(cellRect.xMax, cellRect.yMax));
                 }
 
-                if (!isResizing && !resizeMode && GUI.Button(cellRect, GUIContent.none, GUIStyle.none))
+                if (!isResizing && actionMode != EditorActionMode.Resize && GUI.Button(cellRect, GUIContent.none, GUIStyle.none))
                 {
                     if (e.shift && selRow >= 0 && selCol >= 0)
                     {
-                        selRow2 = r; selCol2 = c;
+                        selRow2 = r;
+                        selCol2 = c;
                     }
                     else
                     {
-                        selRow = r; selCol = c; selRow2 = r; selCol2 = c;
+                        selRow = r;
+                        selCol = c;
+                        selRow2 = r;
+                        selCol2 = c;
                     }
 
-                    var cell = table.GrabCellLikeItOwesYouRent(r, c);
-                    if (cell != null && !cell.isMashedLikePotatoes)
+                    if (actionMode == EditorActionMode.SelectObjects)
                     {
-                        Selection.activeTransform = cell.transform;
-                        EditorGUIUtility.PingObject(cell);
+                        var cell = table.GrabCellLikeItOwesYouRent(r, c);
+                        if (cell != null && !cell.isMashedLikePotatoes)
+                        {
+                            Selection.activeTransform = cell.transform;
+                            EditorGUIUtility.PingObject(cell);
+                        }
                     }
                 }
 
                 x += colW[c] + table.sociallyDistancedColumnsPixels;
             }
-
             y += rowH[r] + table.sociallyDistancedRowsPixels;
         }
 
@@ -547,7 +573,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private void DrawResizeHandles(Rect grid, float[] colW, float[] rowH)
     {
-        if (!resizeMode) return;
+        if (actionMode != EditorActionMode.Resize) return;
+
         var e = Event.current;
         float grab = 6f;
 
