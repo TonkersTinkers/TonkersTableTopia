@@ -42,14 +42,14 @@ I got tired of never being able to make basic tables in UGUI. Years. Of. Wrestli
 
 ## Installation
 
-1. Copy the runtime classes into your project: Assets/UI/TonkersTableTopia/
+1. Copy the runtime classes into your project: Assets/UI/TonkersTableTopia/ (or any assets folder)
 
 - Ux_TonkersTableTopiaLayout.cs
 - Ux_TonkersTableTopiaRow.cs
 - Ux_TonkersTableTopiaCell.cs
 - Ux_TonkersTableTopiaExtensions.cs
 
-2. Copy the Editor scripts into: Assets/Editor/TonkersTableTopia/
+2. Copy the Editor scripts into: Assets/Editor/TonkersTableTopia/ (or any editor foldeR)
 
 - Ux_TonkersTableTopiaLayoutEditor.cs
 - Ux_TonkersTableTopiaRowEditor.cs
