@@ -6,7 +6,6 @@ using UnityEngine;
 [CustomEditor(typeof(Ux_TonkersTableTopiaRow))]
 public class Ux_TonkersTableTopiaRowEditor : Editor
 {
-    // TonkersTableTopiaRowEditor
     public override void OnInspectorGUI()
     {
         var row = (Ux_TonkersTableTopiaRow)target;
