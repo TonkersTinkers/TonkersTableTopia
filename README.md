@@ -7,6 +7,12 @@ Finally: simple tables in Unity UGUI without suffering.
 
 I got tired of never being able to make basic tables in UGUI. Years. Of. Wrestling. I just wanted rows, columns, merge cells, zebra stripes, and pixels or percents that behave. So I built this. Now you can click, merge, split, resize, and laugh maniacally as your UGUI tables behave like a polite spreadsheet. No more “everyone fend for yourselves”, this is a sane, WYSIWYG table layout management system.
 
+Quick Video: Shows table editor in action
+
+https://youtu.be/Ax740NRROhc
+
+
+
 ---
 
 ## Repository Metadata
