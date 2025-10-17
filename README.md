@@ -6,9 +6,9 @@ I got tired of never being able to make basic tables in UGUI. Years. Of. Wrestli
 
 Quick Video: Shows table editor in action
 
-https://youtu.be/Ax740NRROhc
+- https://youtu.be/Ax740NRROhc
 
-- The game for which this editor script was made and used in.
+The game for which this editor script was made and used in.
 - https://store.steampowered.com/app/3844910/
 
 ---
