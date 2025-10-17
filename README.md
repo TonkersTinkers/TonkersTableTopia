@@ -1,4 +1,4 @@
-# Tonkers Table Topia (UGUI)
+# Tonkers Table Topia (Unity UGUI)
 
 Finally: simple tables in Unity UGUI without suffering.
 
