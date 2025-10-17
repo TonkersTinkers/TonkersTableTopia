@@ -3,7 +3,7 @@
 Finally: simple tables in Unity UGUI without suffering.
 
 - Note: Don't forget to checkout & BUY the Arcade Style game on steam, the game for which this editor script was made and used in.
-- https://store.steampowered.com/app/3844910/Historic_Helix/)
+- https://store.steampowered.com/app/3844910/
 
 I got tired of never being able to make basic tables in UGUI. Years. Of. Wrestling. I just wanted rows, columns, merge cells, zebra stripes, and pixels or percents that behave. So I built this. Now you can click, merge, split, resize, and laugh maniacally as your UGUI tables behave like a polite spreadsheet. No more “everyone fend for yourselves”, this is a sane, WYSIWYG table layout management system.
 
