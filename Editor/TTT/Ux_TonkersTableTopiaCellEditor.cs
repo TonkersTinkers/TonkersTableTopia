@@ -1,27 +1,11 @@
-#if UNITY_EDITOR
-
 using UnityEditor;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 [CustomEditor(typeof(Ux_TonkersTableTopiaCell))]
 public class Ux_TonkersTableTopiaCellEditor : Editor
 {
-    private SerializedProperty rowIndexProp, colIndexProp, rowSpanProp, colSpanProp, isMergedProp, mergedIntoProp;
-
     private SerializedProperty bgImageProp, bgColorProp;
-
-    private void OnEnable()
-    {
-        rowIndexProp = serializedObject.FindProperty("rowNumberWhereThePartyIs");
-        colIndexProp = serializedObject.FindProperty("columnNumberPrimeRib");
-        rowSpanProp = serializedObject.FindProperty("howManyRowsAreHoggingThisSeat");
-        colSpanProp = serializedObject.FindProperty("howManyColumnsAreSneakingIn");
-        isMergedProp = serializedObject.FindProperty("isMashedLikePotatoes");
-        mergedIntoProp = serializedObject.FindProperty("mashedIntoWho");
-        bgImageProp = serializedObject.FindProperty("backgroundPictureBecausePlainIsLame");
-        bgColorProp = serializedObject.FindProperty("backgroundColorLikeASunset");
-    }
+    private SerializedProperty rowIndexProp, colIndexProp, rowSpanProp, colSpanProp, isMergedProp, mergedIntoProp;
 
     public override void OnInspectorGUI()
     {
@@ -98,17 +82,41 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             GUI.enabled = true;
         }
 
-        EditorGUI.BeginChangeCheck();
-        cell.backgroundPictureBecausePlainIsLame = (Sprite)EditorGUILayout.ObjectField("Cell Background", cell.backgroundPictureBecausePlainIsLame, typeof(Sprite), false);
-        cell.backgroundColorLikeASunset = EditorGUILayout.ColorField("Cell Color", cell.backgroundColorLikeASunset);
-        if (EditorGUI.EndChangeCheck())
+        bool imgToggle = EditorPrefs.GetBool($"TTT_CellImg_{cell.GetInstanceID()}", false);
+        bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
+        if (newImgToggle != imgToggle) EditorPrefs.SetBool($"TTT_CellImg_{cell.GetInstanceID()}", newImgToggle);
+
+        if (newImgToggle)
         {
-            Undo.RecordObject(cell, "Edit Cell Override");
-            if (table)
+            EditorGUI.BeginChangeCheck();
+            var newSprite = (Sprite)EditorGUILayout.ObjectField("Cell Background", cell.backgroundPictureBecausePlainIsLame, typeof(Sprite), false);
+            if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(table, "Edit Cell Override");
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
+                Undo.RecordObject(cell, "Edit Cell Background");
+                cell.backgroundPictureBecausePlainIsLame = newSprite;
+                if (table)
+                {
+                    Undo.RecordObject(table, "Edit Cell Background");
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
+                }
+            }
+
+            if (cell.backgroundPictureBecausePlainIsLame != null)
+            {
+                EditorGUI.BeginChangeCheck();
+                var newColor = EditorGUILayout.ColorField("Cell Color", cell.backgroundColorLikeASunset);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(cell, "Edit Cell Color");
+                    cell.backgroundColorLikeASunset = newColor;
+                    if (table)
+                    {
+                        Undo.RecordObject(table, "Edit Cell Color");
+                        table.FlagLayoutAsNeedingSpaDay();
+                        EditorUtility.SetDirty(table);
+                    }
+                }
             }
         }
 
@@ -152,8 +160,19 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 col.requestedWidthMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", col.backdropPictureOnTheHouse, typeof(Sprite), false);
-            col.backdropTintFlavor = EditorGUILayout.ColorField("Color", col.backdropTintFlavor);
+            bool colImgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
+            bool newColImgToggle = EditorGUILayout.ToggleLeft("Image Settings", colImgToggle);
+            if (newColImgToggle != colImgToggle) EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newColImgToggle);
+
+            if (newColImgToggle)
+            {
+                col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", col.backdropPictureOnTheHouse, typeof(Sprite), false);
+                if (col.backdropPictureOnTheHouse != null)
+                {
+                    col.backdropTintFlavor = EditorGUILayout.ColorField("Color", col.backdropTintFlavor);
+                }
+            }
+
             col.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Override Anchors/Pivot", col.customAnchorsAndPivotBecauseWeFancy);
             if (col.customAnchorsAndPivotBecauseWeFancy)
             {
@@ -197,8 +216,19 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 row.requestedHeightMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", row.backdropPictureOnTheHouse, typeof(Sprite), false);
-            row.backdropTintFlavor = EditorGUILayout.ColorField("Color", row.backdropTintFlavor);
+            bool rowImgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
+            bool newRowImgToggle = EditorGUILayout.ToggleLeft("Image Settings", rowImgToggle);
+            if (newRowImgToggle != rowImgToggle) EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newRowImgToggle);
+
+            if (newRowImgToggle)
+            {
+                row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", row.backdropPictureOnTheHouse, typeof(Sprite), false);
+                if (row.backdropPictureOnTheHouse != null)
+                {
+                    row.backdropTintFlavor = EditorGUILayout.ColorField("Color", row.backdropTintFlavor);
+                }
+            }
+
             row.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Override Anchors/Pivot", row.customAnchorsAndPivotBecauseWeFancy);
             if (row.customAnchorsAndPivotBecauseWeFancy)
             {
@@ -231,6 +261,16 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         };
         EditorGUIUtility.ExitGUI();
     }
-}
 
-#endif
+    private void OnEnable()
+    {
+        rowIndexProp = serializedObject.FindProperty("rowNumberWhereThePartyIs");
+        colIndexProp = serializedObject.FindProperty("columnNumberPrimeRib");
+        rowSpanProp = serializedObject.FindProperty("howManyRowsAreHoggingThisSeat");
+        colSpanProp = serializedObject.FindProperty("howManyColumnsAreSneakingIn");
+        isMergedProp = serializedObject.FindProperty("isMashedLikePotatoes");
+        mergedIntoProp = serializedObject.FindProperty("mashedIntoWho");
+        bgImageProp = serializedObject.FindProperty("backgroundPictureBecausePlainIsLame");
+        bgColorProp = serializedObject.FindProperty("backgroundColorLikeASunset");
+    }
+}
