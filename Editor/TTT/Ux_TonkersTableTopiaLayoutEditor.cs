@@ -1619,9 +1619,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void ResizeColWithMouse(Rect grid)
     {
         if (dragCol < 0 || startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
+
         float dxPx = Event.current.mousePosition.x - dragStartMouse;
-        float pxPerContent = Mathf.Max(0.0001f, _lastGridRect.width / Mathf.Max(1f, _lastInnerWidth));
-        float deltaContent = dxPx / pxPerContent;
+
+        float naturalW = ComputeNaturalGridWidthLikeTapeMeasure();
+        float scaleXLikeBinoculars = (_lastGridRect.width > 0f) ? (_lastGridRect.width / naturalW) : 1f;
+
+        float deltaContent = dxPx / Mathf.Max(0.0001f, scaleXLikeBinoculars);
+
         ApplyColResize(dragCol, deltaContent);
         table.FlagLayoutAsNeedingSpaDay();
         Repaint();
@@ -1630,9 +1635,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void ResizeRowWithMouse(Rect grid)
     {
         if (dragRow < 0 || startRowH == null || startRowH.Length != table.totalRowsCountLetTheShowBegin) return;
+
         float dyPx = Event.current.mousePosition.y - dragStartMouse;
-        float pxPerContent = Mathf.Max(0.0001f, _lastGridRect.height / Mathf.Max(1f, _lastInnerHeight));
-        float deltaContent = dyPx / pxPerContent;
+
+        float naturalH = ComputeNaturalGridHeightLikeTapeMeasure();
+        float scaleYLikePeriscope = (_lastGridRect.height > 0f) ? (_lastGridRect.height / naturalH) : 1f;
+
+        float deltaContent = dyPx / Mathf.Max(0.0001f, scaleYLikePeriscope);
+
         ApplyRowResize(dragRow, deltaContent);
         table.FlagLayoutAsNeedingSpaDay();
         Repaint();
@@ -1892,5 +1902,49 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         moveSrcRow = r;
         moveSrcCol = c;
         moveDragActive = true;
+    }
+
+    private float ComputeNaturalGridWidthLikeTapeMeasure()
+    {
+        if (table == null) return 1f;
+        var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
+        int cols = Mathf.Max(1, table.totalColumnsCountHighFive);
+        float innerW = Mathf.Max(1f, rt.rect.width - table.comfyPaddingLeftForElbows - table.comfyPaddingRightForElbows);
+
+        EnsureFloatBuffer(ref _previewColBuf, cols);
+        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+            cols,
+            i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
+            table.sociallyDistancedColumnsPixels,
+            innerW,
+            ref _previewColBuf
+        );
+
+        float natW = 0f;
+        for (int c = 0; c < cols; c++) natW += _previewColBuf[c];
+        if (cols > 1) natW += table.sociallyDistancedColumnsPixels * (cols - 1);
+        return Mathf.Max(1f, natW);
+    }
+
+    private float ComputeNaturalGridHeightLikeTapeMeasure()
+    {
+        if (table == null) return 1f;
+        var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
+        int rows = Mathf.Max(1, table.totalRowsCountLetTheShowBegin);
+        float innerH = Mathf.Max(1f, rt.rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
+
+        EnsureFloatBuffer(ref _previewRowBuf, rows);
+        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+            rows,
+            i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
+            table.sociallyDistancedRowsPixels,
+            innerH,
+            ref _previewRowBuf
+        );
+
+        float natH = 0f;
+        for (int r = 0; r < rows; r++) natH += _previewRowBuf[r];
+        if (rows > 1) natH += table.sociallyDistancedRowsPixels * (rows - 1);
+        return Mathf.Max(1f, natH);
     }
 }
