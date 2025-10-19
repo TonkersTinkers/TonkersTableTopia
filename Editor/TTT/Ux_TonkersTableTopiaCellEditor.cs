@@ -4,9 +4,6 @@ using UnityEngine;
 [CustomEditor(typeof(Ux_TonkersTableTopiaCell))]
 public class Ux_TonkersTableTopiaCellEditor : Editor
 {
-    private SerializedProperty bgImageProp, bgColorProp;
-    private SerializedProperty rowIndexProp, colIndexProp, rowSpanProp, colSpanProp, isMergedProp, mergedIntoProp;
-
     public override void OnInspectorGUI()
     {
         var cell = (Ux_TonkersTableTopiaCell)target;
@@ -260,17 +257,5 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             EditorGUIUtility.PingObject(table);
         };
         EditorGUIUtility.ExitGUI();
-    }
-
-    private void OnEnable()
-    {
-        rowIndexProp = serializedObject.FindProperty("rowNumberWhereThePartyIs");
-        colIndexProp = serializedObject.FindProperty("columnNumberPrimeRib");
-        rowSpanProp = serializedObject.FindProperty("howManyRowsAreHoggingThisSeat");
-        colSpanProp = serializedObject.FindProperty("howManyColumnsAreSneakingIn");
-        isMergedProp = serializedObject.FindProperty("isMashedLikePotatoes");
-        mergedIntoProp = serializedObject.FindProperty("mashedIntoWho");
-        bgImageProp = serializedObject.FindProperty("backgroundPictureBecausePlainIsLame");
-        bgColorProp = serializedObject.FindProperty("backgroundColorLikeASunset");
     }
 }

@@ -1,13 +1,16 @@
-#if UNITY_EDITOR
-
 using System;
 using System.Collections.Generic;
+
+#if UNITY_EDITOR
+
 using UnityEditor;
+
+#endif
+
 using UnityEngine;
 using UnityEngine.UI;
 
 [ExecuteAlways]
-#endif
 [RequireComponent(typeof(RectTransform))]
 [AddComponentMenu("Layout/Tonkers Table Topia")]
 public class Ux_TonkersTableTopiaLayout : MonoBehaviour
@@ -150,10 +153,18 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
     private void OnRectTransformDimensionsChange()
     {
-        ConvertAllSpecsToPercentages();
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            FlagLayoutAsNeedingSpaDay();
+            return;
+        }
+#endif
         FlagLayoutAsNeedingSpaDay();
+        this.DeferSpaDayToNextFrameLikeABarber();
     }
 
+    // class: Ux_TonkersTableTopiaLayout
     public void ConvertAllSpecsToPercentages()
     {
         EnsureWardrobeListsMatchHeadcount();
@@ -162,6 +173,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
         float innerW = Mathf.Max(0f, rt.rect.width - comfyPaddingLeftForElbows - comfyPaddingRightForElbows);
         float innerH = Mathf.Max(0f, rt.rect.height - comfyPaddingTopHat - comfyPaddingBottomCushion);
+
         int cols = Mathf.Max(1, totalColumnsCountHighFive);
         int rows = Mathf.Max(1, totalRowsCountLetTheShowBegin);
 
@@ -174,7 +186,6 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             sociallyDistancedColumnsPixels,
             innerW
         );
-
         float[] rowPixels = Ux_TonkersTableTopiaExtensions.DistributeLikeACaterer(
             rows,
             i => (i < snazzyRowWardrobes.Count) ? snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
@@ -236,6 +247,8 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -(pct / sumPct);
             }
         }
+
+        this.NormalizeWardrobePercentsToOneDadBod();
     }
 
     private void OnValidate()
@@ -266,13 +279,16 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (Application.isPlaying)
+        if (!Application.isPlaying) return;
+
+        var rt = GetComponent<RectTransform>();
+        if (rt != null && this.StampAndCheckIfChangedLikePassport(rt))
+            layoutNeedsAFreshCoatOfPaint = true;
+
+        if (layoutNeedsAFreshCoatOfPaint)
         {
-            if (layoutNeedsAFreshCoatOfPaint)
-            {
-                UpdateSeatingLikeAProUsher();
-                layoutNeedsAFreshCoatOfPaint = false;
-            }
+            UpdateSeatingLikeAProUsher();
+            layoutNeedsAFreshCoatOfPaint = false;
         }
     }
 
@@ -527,19 +543,14 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     private void DressRowInItsSundayBest(int rowNumberIndex, RectTransform rowRect)
     {
         var rowStyle = (rowNumberIndex < snazzyRowWardrobes.Count) ? snazzyRowWardrobes[rowNumberIndex] : null;
-        if (rowStyle != null && rowStyle.backdropPictureOnTheHouse != null)
+        bool needImage = rowStyle != null && rowStyle.backdropPictureOnTheHouse != null;
+
+        var img = rowRect.FlipImageComponentLikeALightSwitch(needImage);
+        if (img != null)
         {
-            var img = rowRect.GetComponent<Image>();
-            if (img == null) img = rowRect.gameObject.AddComponent<Image>();
             img.sprite = rowStyle.backdropPictureOnTheHouse;
             img.color = rowStyle.backdropTintFlavor;
             img.type = Image.Type.Sliced;
-            img.enabled = true;
-        }
-        else
-        {
-            var img = rowRect.GetComponent<Image>();
-            if (img != null) img.enabled = false;
         }
     }
 
@@ -729,71 +740,58 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
     private void DressCellToImpress(RectTransform cellRect, Ux_TonkersTableTopiaCell cellComp, int columnIndex)
     {
-        Image img = cellRect.GetComponent<Image>();
-
         if (cellComp.isMashedLikePotatoes)
         {
-            if (img != null) img.enabled = false;
-            return;
-        }
-
-        if (cellComp.backgroundPictureBecausePlainIsLame != null)
-        {
-            if (img == null) img = cellRect.gameObject.AddComponent<Image>();
-            img.sprite = cellComp.backgroundPictureBecausePlainIsLame;
-            img.color = cellComp.backgroundColorLikeASunset;
-            img.type = Image.Type.Sliced;
-            img.enabled = true;
+            cellRect.FlipImageComponentLikeALightSwitch(false);
             return;
         }
 
         bool isMergedTopLeft = (cellComp.howManyRowsAreHoggingThisSeat > 1 || cellComp.howManyColumnsAreSneakingIn > 1);
         if (isMergedTopLeft)
         {
-            if (img == null) img = cellRect.gameObject.AddComponent<Image>();
-            img.sprite = null;
-            img.type = Image.Type.Simple;
+            cellRect.FlipImageComponentLikeALightSwitch(false);
+            return;
+        }
+
+        if (cellComp.backgroundPictureBecausePlainIsLame != null)
+        {
+            var img = cellRect.FlipImageComponentLikeALightSwitch(true);
+            img.sprite = cellComp.backgroundPictureBecausePlainIsLame;
             img.color = cellComp.backgroundColorLikeASunset;
-            img.enabled = true;
+            img.type = Image.Type.Sliced;
             return;
         }
 
         if (columnIndex < fancyColumnWardrobes.Count && fancyColumnWardrobes[columnIndex].backdropPictureOnTheHouse != null)
         {
-            if (img == null) img = cellRect.gameObject.AddComponent<Image>();
-            img.sprite = fancyColumnWardrobes[columnIndex].backdropPictureOnTheHouse;
-            img.color = fancyColumnWardrobes[columnIndex].backdropTintFlavor;
+            var cs = fancyColumnWardrobes[columnIndex];
+            var img = cellRect.FlipImageComponentLikeALightSwitch(true);
+            img.sprite = cs.backdropPictureOnTheHouse;
+            img.color = cs.backdropTintFlavor;
             img.type = Image.Type.Sliced;
-            img.enabled = true;
             return;
         }
 
         bool useRow = toggleZebraStripesForRows;
         bool useCol = toggleZebraStripesForColumns;
-
         if (useRow || useCol)
         {
-            if (img == null) img = cellRect.gameObject.AddComponent<Image>();
-
             int safeRow = Mathf.Max(0, cellComp.rowNumberWhereThePartyIs);
             int safeCol = Mathf.Max(0, cellComp.columnNumberPrimeRib);
-
             Color rc = ((safeRow & 1) == 0) ? zebraRowColorA : zebraRowColorB;
             Color cc = ((safeCol & 1) == 0) ? zebraColumnColorA : zebraColumnColorB;
-
             Color final = useRow && useCol
                 ? new Color((rc.r + cc.r) * 0.5f, (rc.g + cc.g) * 0.5f, (rc.b + cc.b) * 0.5f, Mathf.Max(rc.a, cc.a))
                 : (useRow ? rc : cc);
 
+            var img = cellRect.FlipImageComponentLikeALightSwitch(true);
             img.sprite = null;
             img.type = Image.Type.Simple;
             img.color = final;
-            img.enabled = true;
+            return;
         }
-        else
-        {
-            if (img != null) img.enabled = false;
-        }
+
+        cellRect.FlipImageComponentLikeALightSwitch(false);
     }
 
     private float[] CalculateBaseColumnWidths(float innerWidthPlayable)
@@ -1678,4 +1676,45 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     }
 
 #endif
+
+    public bool TryFindChildTableInCellLikeSherlock(int row, int col, out Ux_TonkersTableTopiaLayout kid)
+    {
+        kid = null;
+        var cell = FetchCellRectTransformVIP(row, col);
+        if (cell == null) return false;
+        var found = cell.FindFirstChildTableLikeEasterEgg(true);
+        if (found != null) { kid = found; return true; }
+        return false;
+    }
+
+    public Ux_TonkersTableTopiaLayout CreateChildTableInCellLikeABaby(int row, int col)
+    {
+        var cell = FetchCellRectTransformVIP(row, col);
+        if (cell == null) return null;
+        if (TryFindChildTableInCellLikeSherlock(row, col, out var existing)) return existing;
+
+        var go = new GameObject("TTT Nested Table");
+        var rt = go.AddComponent<RectTransform>();
+        rt.SetParent(cell, false);
+        rt.SnapCroutonToFillParentLikeGravy();
+        cell.MakeImageBackgroundNotBlockClicksLikePolite();
+
+        var child = go.AddComponent<Ux_TonkersTableTopiaLayout>();
+        child.totalRowsCountLetTheShowBegin = 1;
+        child.totalColumnsCountHighFive = 3;
+        child.shareThePieEvenlyForColumns = false;
+        child.shareThePieEvenlyForRows = false;
+        child.autoHugHeightBecauseWhyNot = true;
+        child.fancyColumnWardrobes = new List<Ux_TonkersTableTopiaLayout.ColumnStyle>();
+        child.snazzyRowWardrobes = new List<Ux_TonkersTableTopiaLayout.RowStyle>();
+
+        for (int c = 0; c < child.totalColumnsCountHighFive; c++)
+            child.fancyColumnWardrobes.Add(new Ux_TonkersTableTopiaLayout.ColumnStyle { requestedWidthMaybePercentIfNegative = -(1f / child.totalColumnsCountHighFive) });
+        for (int r = 0; r < child.totalRowsCountLetTheShowBegin; r++)
+            child.snazzyRowWardrobes.Add(new Ux_TonkersTableTopiaLayout.RowStyle { requestedHeightMaybePercentIfNegative = -1f });
+
+        child.RebuildComedyClubSeatingChart();
+        child.FlagLayoutAsNeedingSpaDay();
+        return child;
+    }
 }

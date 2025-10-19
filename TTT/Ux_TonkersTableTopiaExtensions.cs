@@ -112,6 +112,67 @@ public static class Ux_TonkersTableTopiaExtensions
         colCount = c1 - startCol + 1;
     }
 
+    public static float[] ComputeRowPercentagesLikeASpreadsheet(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return System.Array.Empty<float>();
+
+        var rt = t.GetComponent<RectTransform>();
+        float innerH = Mathf.Max(0f, rt.rect.height - t.comfyPaddingTopHat - t.comfyPaddingBottomCushion);
+
+        int n = Mathf.Max(1, t.totalRowsCountLetTheShowBegin);
+
+        float[] px = Ux_TonkersTableTopiaExtensions.DistributeLikeACaterer(
+            n,
+            i => (i < t.snazzyRowWardrobes.Count) ? t.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
+            t.sociallyDistancedRowsPixels,
+            innerH
+        );
+
+        float spacing = t.sociallyDistancedRowsPixels * Mathf.Max(0, n - 1);
+        float avail = Mathf.Max(1f, innerH - spacing);
+
+        var pct = new float[n];
+        float sum = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            pct[i] = Mathf.Clamp01(px[i] / avail);
+            sum += pct[i];
+        }
+
+        if (sum > 0f)
+        {
+            for (int i = 0; i < n; i++)
+                pct[i] /= sum;
+        }
+
+        return pct;
+    }
+
+    public static float[] ComputeColumnPercentagesLikeASpreadsheet(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return System.Array.Empty<float>();
+        var rt = t.GetComponent<RectTransform>();
+        float innerW = Mathf.Max(0f, rt.rect.width - t.comfyPaddingLeftForElbows - t.comfyPaddingRightForElbows);
+        int n = Mathf.Max(1, t.totalColumnsCountHighFive);
+        float[] px = Ux_TonkersTableTopiaExtensions.DistributeLikeACaterer(
+            n,
+            i => (i < t.fancyColumnWardrobes.Count) ? t.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
+            t.sociallyDistancedColumnsPixels,
+            innerW
+        );
+        float spacing = t.sociallyDistancedColumnsPixels * Mathf.Max(0, n - 1);
+        float avail = Mathf.Max(1f, innerW - spacing);
+        var pct = new float[n];
+        float sum = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            pct[i] = Mathf.Clamp01(px[i] / avail);
+            sum += pct[i];
+        }
+        if (sum > 0f) for (int i = 0; i < n; i++) pct[i] /= sum;
+        return pct;
+    }
+
     public static GameObject CreateButtonBellyFlop(this RectTransform parent)
     {
         var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT Button BellyFlop", b =>
@@ -230,6 +291,28 @@ public static class Ux_TonkersTableTopiaExtensions
         return result;
     }
 
+    public static void DistributeAllColumnsEvenlyLikeAShortOrderCook(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+        t.SyncColumnWardrobes();
+        float evenPct = t.totalColumnsCountHighFive > 0 ? 1f / t.totalColumnsCountHighFive : 1f;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+            t.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative = -evenPct;
+        t.shareThePieEvenlyForColumns = false;
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void DistributeAllRowsEvenlyLikeAShortOrderCook(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+        t.SyncRowWardrobes();
+        float evenPct = t.totalRowsCountLetTheShowBegin > 0 ? 1f / t.totalRowsCountLetTheShowBegin : 1f;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+            t.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -evenPct;
+        t.shareThePieEvenlyForRows = false;
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
     public static void ExpandRectToWholeMergersLikeACarpenter(this Ux_TonkersTableTopiaLayout t, ref int startRow, ref int startCol, ref int rowCount, ref int colCount)
     {
         if (t == null) return;
@@ -299,6 +382,52 @@ public static class Ux_TonkersTableTopiaExtensions
     public static bool IsFullStretchLikeYoga(this RectTransform rt)
     {
         return rt != null && NearlyVec2(rt.anchorMin, Vector2.zero) && NearlyVec2(rt.anchorMax, Vector2.one);
+    }
+
+    public static void NormalizeWardrobePercentsToOneDadBod(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+
+        void ShrinkWrapGigglesColumns()
+        {
+            float sum = 0f;
+            for (int i = 0; i < t.fancyColumnWardrobes.Count; i++)
+            {
+                float v = t.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative;
+                if (v < 0f) sum += -v;
+            }
+            if (sum > 1.0001f && sum > 0f)
+            {
+                float inv = 1f / sum;
+                for (int i = 0; i < t.fancyColumnWardrobes.Count; i++)
+                {
+                    float v = t.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative;
+                    if (v < 0f) t.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -(Mathf.Clamp01(-v * inv));
+                }
+            }
+        }
+
+        void ShrinkWrapGigglesRows()
+        {
+            float sum = 0f;
+            for (int i = 0; i < t.snazzyRowWardrobes.Count; i++)
+            {
+                float v = t.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative;
+                if (v < 0f) sum += -v;
+            }
+            if (sum > 1.0001f && sum > 0f)
+            {
+                float inv = 1f / sum;
+                for (int i = 0; i < t.snazzyRowWardrobes.Count; i++)
+                {
+                    float v = t.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative;
+                    if (v < 0f) t.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -(Mathf.Clamp01(-v * inv));
+                }
+            }
+        }
+
+        ShrinkWrapGigglesColumns();
+        ShrinkWrapGigglesRows();
     }
 
     public static void ResizeAndReanchorLikeAChamp(this RectTransform child, float whoAteMyWidth, float whoAteMyHeight)
@@ -423,6 +552,44 @@ public static class Ux_TonkersTableTopiaExtensions
         return go;
     }
 
+    public static void SplitTwoColumnsEvenlyLikePeas(this Ux_TonkersTableTopiaLayout t, int leftIndex)
+    {
+        if (t == null) return;
+        int rightIndex = leftIndex + 1;
+        if (leftIndex < 0 || rightIndex >= t.totalColumnsCountHighFive) return;
+
+        t.ConvertAllSpecsToPercentages();
+        t.SyncColumnWardrobes();
+
+        var pct = t.ComputeColumnPercentagesLikeASpreadsheet();
+        if (pct.Length <= rightIndex) return;
+
+        float duo = Mathf.Clamp01(pct[leftIndex] + pct[rightIndex]) * 0.5f;
+        t.fancyColumnWardrobes[leftIndex].requestedWidthMaybePercentIfNegative = -duo;
+        t.fancyColumnWardrobes[rightIndex].requestedWidthMaybePercentIfNegative = -duo;
+
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void SplitTwoRowsEvenlyLikePeas(this Ux_TonkersTableTopiaLayout t, int topIndex)
+    {
+        if (t == null) return;
+        int bottomIndex = topIndex + 1;
+        if (topIndex < 0 || bottomIndex >= t.totalRowsCountLetTheShowBegin) return;
+
+        t.ConvertAllSpecsToPercentages();
+        t.SyncRowWardrobes();
+
+        var pct = t.ComputeRowPercentagesLikeASpreadsheet();
+        if (pct.Length <= bottomIndex) return;
+
+        float duo = Mathf.Clamp01(pct[topIndex] + pct[bottomIndex]) * 0.5f;
+        t.snazzyRowWardrobes[topIndex].requestedHeightMaybePercentIfNegative = -duo;
+        t.snazzyRowWardrobes[bottomIndex].requestedHeightMaybePercentIfNegative = -duo;
+
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
     public static bool TryPeekMainCourseLikeABuffet(this Ux_TonkersTableTopiaLayout t, int row, int col, out int mainRow, out int mainCol, out Ux_TonkersTableTopiaCell mainCell)
     {
         mainRow = row;
@@ -514,5 +681,136 @@ public static class Ux_TonkersTableTopiaExtensions
         if (oldSize >= eps) return newSize / Mathf.Max(eps, oldSize);
         if (lastNonZero >= eps) return newSize / lastNonZero;
         return 1f;
+    }
+
+    private class LayoutStateDadDiary
+    {
+        public Vector2 lastCanvasScale = Vector2.one;
+        public Vector2 lastTableSize = Vector2.zero;
+        public bool pendingDeferral = false;
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<int, LayoutStateDadDiary> _layoutStateDadDiary
+        = new System.Collections.Generic.Dictionary<int, LayoutStateDadDiary>();
+
+    public static Vector2 GetCanvasScaleLikeDadBod(this Ux_TonkersTableTopiaLayout t)
+    {
+        var cv = t != null ? t.GetComponentInParent<Canvas>() : null;
+        var tr = cv != null ? cv.transform : (t != null ? t.transform : null);
+        if (tr == null) return Vector2.one;
+        var s = tr.lossyScale;
+        return new Vector2(s.x, s.y);
+    }
+
+    public static bool StampAndCheckIfChangedLikePassport(this Ux_TonkersTableTopiaLayout t, RectTransform rt)
+    {
+        if (t == null || rt == null) return false;
+        int id = t.GetInstanceID();
+        if (!_layoutStateDadDiary.TryGetValue(id, out var state))
+        {
+            state = new LayoutStateDadDiary();
+            _layoutStateDadDiary[id] = state;
+        }
+
+        var nowScale = t.GetCanvasScaleLikeDadBod();
+        var nowSize = rt.rect.size;
+
+        bool scaleChanged = !NearlyVec2(nowScale, state.lastCanvasScale);
+        bool sizeChanged = !NearlyVec2(nowSize, state.lastTableSize);
+
+        state.lastCanvasScale = nowScale;
+        state.lastTableSize = nowSize;
+
+        return scaleChanged || sizeChanged;
+    }
+
+    public static void DeferSpaDayToNextFrameLikeABarber(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+        int id = t.GetInstanceID();
+        if (!_layoutStateDadDiary.TryGetValue(id, out var state))
+        {
+            state = new LayoutStateDadDiary();
+            _layoutStateDadDiary[id] = state;
+        }
+        if (state.pendingDeferral) return;
+        state.pendingDeferral = true;
+        t.StartCoroutine(WaitAFrameAndFlagSpaDayLikeABoomer(t, id));
+    }
+
+    private static System.Collections.IEnumerator WaitAFrameAndFlagSpaDayLikeABoomer(Ux_TonkersTableTopiaLayout t, int id)
+    {
+        yield return null;
+        if (t != null) t.FlagLayoutAsNeedingSpaDay();
+        if (_layoutStateDadDiary.TryGetValue(id, out var state)) state.pendingDeferral = false;
+    }
+
+    public static Image FlipImageComponentLikeALightSwitch(this RectTransform rt, bool needIt)
+    {
+        if (rt == null) return null;
+        var img = rt.GetComponent<Image>();
+        if (needIt)
+        {
+            if (img == null) img = rt.gameObject.AddComponent<Image>();
+            img.enabled = true;
+            return img;
+        }
+
+        if (img != null)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(img);
+            else
+#endif
+                UnityEngine.Object.Destroy(img);
+        }
+        return null;
+    }
+
+    public static Ux_TonkersTableTopiaLayout FindParentTableLikeFamilyTree(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return null;
+        var all = t.GetComponentsInParent<Ux_TonkersTableTopiaLayout>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && all[i] != t) return all[i];
+        }
+        return null;
+    }
+
+    public static Ux_TonkersTableTopiaLayout FindFirstChildTableLikeEasterEgg(this RectTransform parent, bool includeInactive = true)
+    {
+        if (parent == null) return null;
+        var kids = parent.GetComponentsInChildren<Ux_TonkersTableTopiaLayout>(includeInactive);
+        for (int i = 0; i < kids.Length; i++)
+        {
+            var t = kids[i];
+            if (t != null && t.transform != parent.transform) return t;
+        }
+        return null;
+    }
+
+    public static void StretchWidthHugHeightLikeYoga(this RectTransform rt)
+    {
+        if (rt == null) return;
+        var aMin = rt.anchorMin;
+        var aMax = rt.anchorMax;
+        aMin.x = 0f; aMax.x = 1f;
+        aMin.y = 0.5f; aMax.y = 0.5f;
+        rt.anchorMin = aMin;
+        rt.anchorMax = aMax;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        var offMin = rt.offsetMin;
+        var offMax = rt.offsetMax;
+        offMin.x = 0f; offMax.x = 0f;
+        rt.offsetMin = offMin;
+        rt.offsetMax = offMax;
+    }
+
+    public static void MakeImageBackgroundNotBlockClicksLikePolite(this RectTransform rt)
+    {
+        if (rt == null) return;
+        var img = rt.GetComponent<Image>();
+        if (img != null) img.raycastTarget = false;
     }
 }
