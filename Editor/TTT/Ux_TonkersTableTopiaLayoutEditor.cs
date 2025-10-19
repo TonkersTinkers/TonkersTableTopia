@@ -619,7 +619,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         bool isResizing = dragCol >= 0 || dragRow >= 0;
         var e = Event.current;
-
         bool hasRect = HasRectSelection();
         int selR0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
         int selC0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
@@ -661,13 +660,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 }
 
                 bool hasChildTable = table.TryFindChildTableInCellLikeSherlock(r, c, out var childTbl);
-                if (hasChildTable)
-                {
-                    var ind = new Rect(cellRect.xMax - 14f, cellRect.yMin + 2f, 12f, 12f);
-                    EditorGUI.DrawRect(ind, new Color(0.2f, 0.6f, 1f, 0.25f));
-                    var style = new GUIStyle(EditorStyles.miniBoldLabel) { alignment = TextAnchor.MiddleCenter };
-                    GUI.Label(ind, "T", style);
-                }
+                var snackTypes = new System.Collections.Generic.HashSet<System.Type>();
+                table.ScoutUiSnacksInCellLikeAHawk(r, c, snackTypes, true);
+                var badges = BuildCellBadgeGuiLikeScoutPatches(snackTypes, hasChildTable);
+                if (badges.Count > 0) DrawCellBadgesLikeFlair(cellRect, badges);
 
                 if (!isResizing && actionMode != EditorActionMode.Resize && e.type == EventType.MouseDown && e.button == 0 && cellRect.Contains(e.mousePosition))
                 {
@@ -677,23 +673,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         EditorGUIUtility.PingObject(childTbl);
                         e.Use();
                         Repaint();
+                        RepaintSceneViewLikeABobRoss();
                     }
                     else
                     {
                         if (e.shift && selRow >= 0 && selCol >= 0)
                         {
-                            selRow2 = r;
-                            selCol2 = c;
+                            selRow2 = r; selCol2 = c;
                         }
                         else
                         {
-                            selRow = r;
-                            selCol = c;
-                            selRow2 = r;
-                            selCol2 = c;
+                            selRow = r; selCol = c; selRow2 = r; selCol2 = c;
                         }
-                        headerRowBigEnchilada = -1;
-                        headerColBigEnchilada = -1;
+                        headerRowBigEnchilada = -1; headerColBigEnchilada = -1;
 
                         if (actionMode == EditorActionMode.SelectObjects)
                         {
@@ -704,8 +696,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                                 EditorGUIUtility.PingObject(cell);
                             }
                         }
+
                         e.Use();
                         Repaint();
+                        RepaintSceneViewLikeABobRoss();
                     }
                 }
 
@@ -745,16 +739,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void DrawHeaders(Rect top, Rect left, float[] colW, float[] rowH)
     {
         var e = Event.current;
+
         var x = top.x;
         for (int c = 0; c < colW.Length; c++)
         {
             var r = new Rect(x, top.y, colW[c], top.height);
             EditorGUI.LabelField(r, (c + 1).ToString(), EditorStyles.centeredGreyMiniLabel);
+
             Handles.color = gridLine;
             Handles.DrawLine(
                 new Vector3(r.xMax + table.sociallyDistancedColumnsPixels * 0.5f, r.yMin),
                 new Vector3(r.xMax + table.sociallyDistancedColumnsPixels * 0.5f, r.yMax)
             );
+
             if (e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
             {
                 bool additive = e.shift;
@@ -763,13 +760,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 headerRowBigEnchilada = -1;
                 e.Use();
                 Repaint();
+                RepaintSceneViewLikeABobRoss();
             }
+
             if (((e.type == EventType.MouseDown && e.button == 1 && r.Contains(e.mousePosition)) || (e.type == EventType.ContextClick && r.Contains(e.mousePosition))))
             {
                 Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForColumnHeader(table, c);
                 e.Use();
                 Repaint();
             }
+
             x += colW[c] + table.sociallyDistancedColumnsPixels;
         }
 
@@ -778,11 +778,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             var rr = new Rect(left.x, y, left.width, rowH[rI]);
             EditorGUI.LabelField(rr, (rI + 1).ToString(), EditorStyles.centeredGreyMiniLabel);
+
             Handles.color = gridLine;
             Handles.DrawLine(
                 new Vector3(rr.xMin, rr.yMax + table.sociallyDistancedRowsPixels * 0.5f),
                 new Vector3(rr.xMax, rr.yMax + table.sociallyDistancedRowsPixels * 0.5f)
             );
+
             if (e.type == EventType.MouseDown && e.button == 0 && rr.Contains(e.mousePosition))
             {
                 bool additive = e.shift;
@@ -791,13 +793,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 headerColBigEnchilada = -1;
                 e.Use();
                 Repaint();
+                RepaintSceneViewLikeABobRoss();
             }
+
             if (((e.type == EventType.MouseDown && e.button == 1 && rr.Contains(e.mousePosition)) || (e.type == EventType.ContextClick && rr.Contains(e.mousePosition))))
             {
                 Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForRowHeader(table, rI);
                 e.Use();
                 Repaint();
             }
+
             y += rowH[rI] + table.sociallyDistancedRowsPixels;
         }
     }
@@ -1223,6 +1228,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void EnsureDefaultSelection()
     {
         if (table == null) return;
+
         if (_lastInspectedTableId != table.GetInstanceID())
         {
             _lastInspectedTableId = table.GetInstanceID();
@@ -1230,13 +1236,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             selCol = selCol2 = 0;
             headerRowBigEnchilada = -1;
             headerColBigEnchilada = -1;
+            RepaintSceneViewLikeABobRoss();
             return;
         }
+
         if (selRow < 0 || selCol < 0 || selRow >= table.totalRowsCountLetTheShowBegin || selCol >= table.totalColumnsCountHighFive)
         {
             selRow = selRow2 = 0;
             selCol = selCol2 = 0;
+            RepaintSceneViewLikeABobRoss();
         }
+
         if (headerRowBigEnchilada >= table.totalRowsCountLetTheShowBegin) headerRowBigEnchilada = -1;
         if (headerColBigEnchilada >= table.totalColumnsCountHighFive) headerColBigEnchilada = -1;
     }
@@ -1542,6 +1552,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             selRow = 0;
             selRow2 = Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 1);
         }
+        RepaintSceneViewLikeABobRoss();
     }
 
     private void SelectWholeRowLikeAHungryHighlighter(int r, bool additive)
@@ -1560,6 +1571,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             selCol = 0;
             selCol2 = Mathf.Max(0, table.totalColumnsCountHighFive - 1);
         }
+        RepaintSceneViewLikeABobRoss();
     }
 
     private float Sum(float[] arr, int start, int count)
@@ -1583,5 +1595,99 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         table.UnmergeEverythingInRectLikeItNeverHappened(r0, c0, rCount, cCount);
         table.FlagLayoutAsNeedingSpaDay();
         EditorUtility.SetDirty(table);
+    }
+
+    private System.Collections.Generic.List<GUIContent> BuildCellBadgeGuiLikeScoutPatches(System.Collections.Generic.HashSet<System.Type> snackTypes, bool includeTableBadge)
+    {
+        var list = new System.Collections.Generic.List<GUIContent>();
+        if (includeTableBadge) list.Add(new GUIContent("T"));
+
+        var order = new System.Type[]
+        {
+        typeof(UnityEngine.UI.Text),
+        typeof(UnityEngine.UI.Image),
+        typeof(UnityEngine.UI.RawImage),
+        typeof(UnityEngine.UI.Button),
+        typeof(UnityEngine.UI.Toggle),
+        typeof(UnityEngine.UI.Slider),
+        typeof(UnityEngine.UI.Dropdown),
+        typeof(UnityEngine.UI.Scrollbar),
+        typeof(UnityEngine.UI.ScrollRect),
+        typeof(UnityEngine.UI.InputField)
+        };
+
+        for (int i = 0; i < order.Length; i++)
+        {
+            var tp = order[i];
+            if (!snackTypes.Contains(tp)) continue;
+            list.Add(IconForSnackTypeLikeSmiley(tp));
+        }
+
+        return list;
+    }
+
+    private GUIContent IconForSnackTypeLikeSmiley(System.Type t)
+    {
+        var gc = EditorGUIUtility.ObjectContent(null, t);
+        if (gc != null && gc.image != null) return new GUIContent(gc.image);
+        return new GUIContent(ShortCodeForSnackLikeAcronym(t));
+    }
+
+    private string ShortCodeForSnackLikeAcronym(System.Type t)
+    {
+        if (t == typeof(UnityEngine.UI.Text)) return "Tx";
+        if (t == typeof(UnityEngine.UI.Image)) return "Img";
+        if (t == typeof(UnityEngine.UI.RawImage)) return "Raw";
+        if (t == typeof(UnityEngine.UI.Button)) return "Btn";
+        if (t == typeof(UnityEngine.UI.Toggle)) return "Tog";
+        if (t == typeof(UnityEngine.UI.Slider)) return "Sld";
+        if (t == typeof(UnityEngine.UI.Dropdown)) return "Drp";
+        if (t == typeof(UnityEngine.UI.Scrollbar)) return "Bar";
+        if (t == typeof(UnityEngine.UI.ScrollRect)) return "Scr";
+        if (t == typeof(UnityEngine.UI.InputField)) return "Inp";
+        return "?";
+    }
+
+    private void DrawCellBadgesLikeFlair(Rect cellRect, System.Collections.Generic.List<GUIContent> badges)
+    {
+        const float size = 12f;
+        const float pad = 2f;
+        float x = cellRect.xMax - pad - size;
+        float y = cellRect.yMin + pad;
+
+        for (int i = 0; i < badges.Count; i++)
+        {
+            var r = new Rect(x - i * (size + 1f), y, size, size);
+            EditorGUI.DrawRect(r, new Color(0.2f, 0.6f, 1f, 0.25f));
+            var style = EditorStyles.miniBoldLabel;
+            if (badges[i].image != null)
+            {
+                GUI.DrawTexture(r, badges[i].image, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                var s = new GUIStyle(style) { alignment = TextAnchor.MiddleCenter };
+                GUI.Label(r, badges[i], s);
+            }
+        }
+    }
+
+    private static void RepaintSceneViewLikeABobRoss()
+    {
+        SceneView.RepaintAll();
+
+        if (Event.current != null)
+        {
+            HandleUtility.Repaint();
+        }
+        else
+        {
+            EditorApplication.delayCall += () =>
+            {
+                SceneView.RepaintAll();
+            };
+        }
+
+        EditorApplication.QueuePlayerLoopUpdate();
     }
 }

@@ -813,4 +813,36 @@ public static class Ux_TonkersTableTopiaExtensions
         var img = rt.GetComponent<Image>();
         if (img != null) img.raycastTarget = false;
     }
+
+    public static void ScoutUiSnacksInCellLikeAHawk(this Ux_TonkersTableTopiaLayout t, int row, int col, System.Collections.Generic.HashSet<System.Type> bag, bool includeInactive = true)
+    {
+        if (t == null || bag == null) return;
+        var cell = t.FetchCellRectTransformVIP(row, col);
+        if (cell == null) return;
+
+        var comps = cell.GetComponentsInChildren<Component>(includeInactive);
+        for (int i = 0; i < comps.Length; i++)
+        {
+            var c = comps[i];
+            if (c == null) continue;
+            var go = c.gameObject;
+            if (go.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (go.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (go.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            var tp = c.GetType();
+            if (tp == typeof(RectTransform) || tp == typeof(CanvasRenderer)) continue;
+
+            if (c is UnityEngine.UI.Text) { bag.Add(typeof(UnityEngine.UI.Text)); continue; }
+            if (c is UnityEngine.UI.Image && go.GetComponent<UnityEngine.UI.Button>() == null) { bag.Add(typeof(UnityEngine.UI.Image)); continue; }
+            if (c is UnityEngine.UI.RawImage) { bag.Add(typeof(UnityEngine.UI.RawImage)); continue; }
+            if (c is UnityEngine.UI.Button) { bag.Add(typeof(UnityEngine.UI.Button)); continue; }
+            if (c is UnityEngine.UI.Toggle) { bag.Add(typeof(UnityEngine.UI.Toggle)); continue; }
+            if (c is UnityEngine.UI.Slider) { bag.Add(typeof(UnityEngine.UI.Slider)); continue; }
+            if (c is UnityEngine.UI.Dropdown) { bag.Add(typeof(UnityEngine.UI.Dropdown)); continue; }
+            if (c is UnityEngine.UI.Scrollbar) { bag.Add(typeof(UnityEngine.UI.Scrollbar)); continue; }
+            if (c is UnityEngine.UI.ScrollRect) { bag.Add(typeof(UnityEngine.UI.ScrollRect)); continue; }
+            if (c is UnityEngine.UI.InputField) { bag.Add(typeof(UnityEngine.UI.InputField)); continue; }
+        }
+    }
 }

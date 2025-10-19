@@ -625,6 +625,9 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         var tableRT = GetComponent<RectTransform>();
         if (tableRT != null) tableRT.ForceUpdateRectTransforms();
 
+        // sweep any late foreign kids out of hidden mashed cells into their visible main cell
+        SweepAllMashedForeignsToTheirMainLikeRoomba();
+
         for (int r = 0; r < totalRowsCountLetTheShowBegin; r++)
         {
             var rowRT = backstageRowRectsVIP[r];
@@ -633,12 +636,10 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 RefreshDirectForeignChildrenIn(rowRT);
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(rowRT);
             }
-
             for (int c = 0; c < totalColumnsCountHighFive; c++)
             {
                 var cellRT = backstageCellRectsVIP[r][c];
                 if (cellRT == null) continue;
-
                 RefreshDirectForeignChildrenIn(cellRT);
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(cellRT);
             }
@@ -646,6 +647,28 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
         Canvas.ForceUpdateCanvases();
         if (tableRT != null) tableRT.ForceUpdateRectTransforms();
+    }
+
+    private void SweepAllMashedForeignsToTheirMainLikeRoomba()
+    {
+        for (int r = 0; r < totalRowsCountLetTheShowBegin; r++)
+        {
+            for (int c = 0; c < totalColumnsCountHighFive; c++)
+            {
+                var rt = FetchCellRectTransformVIP(r, c);
+                if (rt == null) continue;
+
+                var cell = rt.GetComponent<Ux_TonkersTableTopiaCell>();
+                if (cell == null) continue;
+                if (!cell.isMashedLikePotatoes || cell.mashedIntoWho == null) continue;
+
+                var main = cell.mashedIntoWho;
+                var mainRT = FetchCellRectTransformVIP(main.rowNumberWhereThePartyIs, main.columnNumberPrimeRib);
+                if (mainRT == null) continue;
+
+                EscortNonVIPsToTarget(rt, mainRT);
+            }
+        }
     }
 
     private void RefreshDirectForeignChildrenIn(RectTransform parent)
@@ -978,13 +1001,11 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     public void MergeCellsLikeAGroupHug(int startRow, int startCol, int rowCount, int colCount)
     {
         if (rowCount < 1 || colCount < 1) return;
-        if (totalRowsCountLetTheShowBegin < 1 || totalColumnsCountHighFive < 1) return;
+        if (totalColumnsCountHighFive < 1 || totalRowsCountLetTheShowBegin < 1) return;
 
         RebuildComedyClubSeatingChart();
-
         this.ClampRectToTableLikeASensibleSeatbelt(ref startRow, ref startCol, ref rowCount, ref colCount);
         if (rowCount == 1 && colCount == 1) return;
-
         this.ExpandRectToWholeMergersLikeACarpenter(ref startRow, ref startCol, ref rowCount, ref colCount);
 
         UnmergeRectangleLikeItNeverHappened(startRow, startCol, rowCount, colCount);
@@ -992,6 +1013,9 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         RectTransform mainCellRT = FetchCellRectTransformVIP(startRow, startCol);
         var mainCellComp = mainCellRT ? mainCellRT.GetComponent<Ux_TonkersTableTopiaCell>() : null;
         if (mainCellComp == null) return;
+
+        // move foreign kids from all cells in the merging rect into the visible main cell before hiding the others
+        RelocateStowawaysToMainCellLikeAValet(startRow, startCol, rowCount, colCount, mainCellRT);
 
         mainCellComp.howManyRowsAreHoggingThisSeat = rowCount;
         mainCellComp.howManyColumnsAreSneakingIn = colCount;
@@ -1015,6 +1039,21 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
         mainCellRT.gameObject.name = $"TTT Cell {startRow + 1},{startCol + 1} Mega Combo {rowCount}x{colCount}";
         FlagLayoutAsNeedingSpaDay();
+    }
+
+    private void RelocateStowawaysToMainCellLikeAValet(int startRow, int startCol, int rowCount, int colCount, RectTransform mainCellRT)
+    {
+        if (mainCellRT == null) return;
+        for (int r = startRow; r < startRow + rowCount; r++)
+        {
+            for (int c = startCol; c < startCol + colCount; c++)
+            {
+                var fromRT = FetchCellRectTransformVIP(r, c);
+                if (fromRT == null) continue;
+                if (ReferenceEquals(fromRT, mainCellRT)) continue;
+                EscortNonVIPsToTarget(fromRT, mainCellRT);
+            }
+        }
     }
 
     public void UnmergeCellEveryoneGetsTheirOwnChair(int row, int col)
