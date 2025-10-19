@@ -1,25 +1,36 @@
 using UnityEditor;
 using UnityEngine;
+using System.Collections.Generic;
 
 [CustomEditor(typeof(Ux_TonkersTableTopiaRow))]
 public class Ux_TonkersTableTopiaRowEditor : Editor
 {
+    private static readonly GUIContent GC_BackToTable = new GUIContent("Back to Tonkers Table Topia");
+
+    private static readonly GUIContent GC_DeleteRow = new GUIContent("Delete Row");
+
+    private static readonly Queue<System.Action> _deferred = new Queue<System.Action>(4);
+
+    private static bool _delayScheduled;
+
+    private Ux_TonkersTableTopiaLayout _cachedTable;
+
     public override void OnInspectorGUI()
     {
         var row = (Ux_TonkersTableTopiaRow)target;
-        var table = row ? row.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null;
+        var table = _cachedTable != null ? _cachedTable : (_cachedTable = row ? row.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null);
 
         using (new EditorGUILayout.HorizontalScope())
         {
             GUI.enabled = table != null;
-            if (GUILayout.Button("Back to Tonkers Table Topia", GUILayout.Height(22))) Selection.activeObject = table;
+            if (GUILayout.Button(GC_BackToTable, GUILayout.Height(22))) Selection.activeObject = table;
             GUI.enabled = true;
         }
 
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUI.enabled = table != null;
-            if (GUILayout.Button("Delete Row", GUILayout.Height(22)))
+            if (GUILayout.Button(GC_DeleteRow, GUILayout.Height(22)))
             {
                 int r = row.rowNumberWhereShenanigansOccur;
                 DeferToTableAndExit(table, () =>
@@ -52,7 +63,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
 
             bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
             EditorGUI.BeginChangeCheck();
-            manualRows = EditorGUILayout.Toggle("Manual Heights", manualRows);
+            manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
             EditorPrefs.SetBool("TTT_ManualRows", manualRows);
 
             if (manualRows)
@@ -68,9 +79,10 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                 rs.requestedHeightMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            rs.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", rs.backdropPictureOnTheHouse, typeof(Sprite), false);
-            rs.backdropTintFlavor = EditorGUILayout.ColorField("Color", rs.backdropTintFlavor);
-            rs.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Override Anchors/Pivot", rs.customAnchorsAndPivotBecauseWeFancy);
+            rs.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", rs.backdropPictureOnTheHouse, typeof(Sprite), false);
+            rs.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", rs.backdropTintFlavor);
+
+            rs.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", rs.customAnchorsAndPivotBecauseWeFancy);
             if (rs.customAnchorsAndPivotBecauseWeFancy)
             {
                 rs.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", rs.customAnchorMinPointy);
@@ -88,15 +100,42 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
         }
     }
 
+    private static void EnqueueDeferred(System.Action a)
+    {
+        if (a == null) return;
+        _deferred.Enqueue(a);
+        if (!_delayScheduled)
+        {
+            _delayScheduled = true;
+            EditorApplication.delayCall += DrainDeferred;
+        }
+    }
+
+    private static void DrainDeferred()
+    {
+        while (_deferred.Count > 0)
+        {
+            var act = _deferred.Dequeue();
+            try { act(); } catch { }
+        }
+        _delayScheduled = false;
+    }
+
     private static void DeferToTableAndExit(Ux_TonkersTableTopiaLayout table, System.Action action)
     {
         if (table == null) return;
         Selection.activeObject = table;
-        EditorApplication.delayCall += () =>
+        EnqueueDeferred(() =>
         {
             if (table != null) action?.Invoke();
             EditorGUIUtility.PingObject(table);
-        };
-        EditorGUIUtility.ExitGUI();
+        });
+        GUIUtility.ExitGUI();
+    }
+
+    private void OnEnable()
+    {
+        var row = (Ux_TonkersTableTopiaRow)target;
+        _cachedTable = row ? row.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null;
     }
 }

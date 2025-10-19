@@ -1,25 +1,36 @@
 using UnityEditor;
 using UnityEngine;
+using System.Collections.Generic;
 
 [CustomEditor(typeof(Ux_TonkersTableTopiaCell))]
 public class Ux_TonkersTableTopiaCellEditor : Editor
 {
+    private static readonly GUIContent GC_BackToTable = new GUIContent("Back to Tonkers Table Topia");
+    private static readonly GUIContent GC_DeleteCell = new GUIContent("Delete Cell");
+    private static readonly GUIContent GC_DeleteRow = new GUIContent("Delete Row");
+
+    private static readonly Queue<System.Action> _deferred = new Queue<System.Action>(4);
+    private static bool _delayScheduled;
+
+    private Ux_TonkersTableTopiaLayout _cachedTable;
+    private Ux_TonkersTableTopiaCell _cell;
+
     public override void OnInspectorGUI()
     {
-        var cell = (Ux_TonkersTableTopiaCell)target;
-        var table = cell ? cell.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null;
+        var cell = _cell != null ? _cell : (_cell = (Ux_TonkersTableTopiaCell)target);
+        var table = _cachedTable != null ? _cachedTable : (_cachedTable = cell ? cell.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null);
 
         using (new EditorGUILayout.HorizontalScope())
         {
             GUI.enabled = table != null;
-            if (GUILayout.Button("Back to Tonkers Table Topia", GUILayout.Height(22))) Selection.activeObject = table;
+            if (GUILayout.Button(GC_BackToTable, GUILayout.Height(22))) Selection.activeObject = table;
             GUI.enabled = true;
         }
 
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUI.enabled = table != null;
-            if (GUILayout.Button("Delete Cell", GUILayout.Height(22)))
+            if (GUILayout.Button(GC_DeleteCell, GUILayout.Height(22)))
             {
                 int r = cell.rowNumberWhereThePartyIs;
                 int c = cell.columnNumberPrimeRib;
@@ -29,7 +40,7 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                     table.TryKindlyDeleteCell(r, c);
                 });
             }
-            if (GUILayout.Button("Delete Row", GUILayout.Height(22)))
+            if (GUILayout.Button(GC_DeleteRow, GUILayout.Height(22)))
             {
                 int r = cell.rowNumberWhereThePartyIs;
                 DeferToTableAndExit(table, () =>
@@ -82,11 +93,10 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         bool imgToggle = EditorPrefs.GetBool($"TTT_CellImg_{cell.GetInstanceID()}", false);
         bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
         if (newImgToggle != imgToggle) EditorPrefs.SetBool($"TTT_CellImg_{cell.GetInstanceID()}", newImgToggle);
-
         if (newImgToggle)
         {
             EditorGUI.BeginChangeCheck();
-            var newSprite = (Sprite)EditorGUILayout.ObjectField("Cell Background", cell.backgroundPictureBecausePlainIsLame, typeof(Sprite), false);
+            var newSprite = (Sprite)EditorGUILayout.ObjectField("Background Image", cell.backgroundPictureBecausePlainIsLame, typeof(Sprite), false);
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(cell, "Edit Cell Background");
@@ -102,7 +112,7 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             if (cell.backgroundPictureBecausePlainIsLame != null)
             {
                 EditorGUI.BeginChangeCheck();
-                var newColor = EditorGUILayout.ColorField("Cell Color", cell.backgroundColorLikeASunset);
+                var newColor = EditorGUILayout.ColorField("Tint Color", cell.backgroundColorLikeASunset);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(cell, "Edit Cell Color");
@@ -141,7 +151,7 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         {
             bool manualCols = EditorPrefs.GetBool("TTT_ManualCols", false);
             EditorGUI.BeginChangeCheck();
-            manualCols = EditorGUILayout.Toggle("Manual Widths", manualCols);
+            manualCols = EditorGUILayout.Toggle("Fixed Widths", manualCols);
             EditorPrefs.SetBool("TTT_ManualCols", manualCols);
 
             if (manualCols)
@@ -160,17 +170,16 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             bool colImgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
             bool newColImgToggle = EditorGUILayout.ToggleLeft("Image Settings", colImgToggle);
             if (newColImgToggle != colImgToggle) EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newColImgToggle);
-
             if (newColImgToggle)
             {
-                col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", col.backdropPictureOnTheHouse, typeof(Sprite), false);
+                col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", col.backdropPictureOnTheHouse, typeof(Sprite), false);
                 if (col.backdropPictureOnTheHouse != null)
                 {
-                    col.backdropTintFlavor = EditorGUILayout.ColorField("Color", col.backdropTintFlavor);
+                    col.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", col.backdropTintFlavor);
                 }
             }
 
-            col.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Override Anchors/Pivot", col.customAnchorsAndPivotBecauseWeFancy);
+            col.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", col.customAnchorsAndPivotBecauseWeFancy);
             if (col.customAnchorsAndPivotBecauseWeFancy)
             {
                 col.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", col.customAnchorMinPointy);
@@ -197,7 +206,7 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         {
             bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
             EditorGUI.BeginChangeCheck();
-            manualRows = EditorGUILayout.Toggle("Manual Heights", manualRows);
+            manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
             EditorPrefs.SetBool("TTT_ManualRows", manualRows);
 
             if (manualRows)
@@ -216,17 +225,16 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             bool rowImgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
             bool newRowImgToggle = EditorGUILayout.ToggleLeft("Image Settings", rowImgToggle);
             if (newRowImgToggle != rowImgToggle) EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newRowImgToggle);
-
             if (newRowImgToggle)
             {
-                row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background", row.backdropPictureOnTheHouse, typeof(Sprite), false);
+                row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", row.backdropPictureOnTheHouse, typeof(Sprite), false);
                 if (row.backdropPictureOnTheHouse != null)
                 {
-                    row.backdropTintFlavor = EditorGUILayout.ColorField("Color", row.backdropTintFlavor);
+                    row.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", row.backdropTintFlavor);
                 }
             }
 
-            row.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Override Anchors/Pivot", row.customAnchorsAndPivotBecauseWeFancy);
+            row.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", row.customAnchorsAndPivotBecauseWeFancy);
             if (row.customAnchorsAndPivotBecauseWeFancy)
             {
                 row.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", row.customAnchorMinPointy);
@@ -247,15 +255,42 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         serializedObject.ApplyModifiedProperties();
     }
 
+    private static void EnqueueDeferred(System.Action a)
+    {
+        if (a == null) return;
+        _deferred.Enqueue(a);
+        if (!_delayScheduled)
+        {
+            _delayScheduled = true;
+            EditorApplication.delayCall += DrainDeferred;
+        }
+    }
+
+    private static void DrainDeferred()
+    {
+        while (_deferred.Count > 0)
+        {
+            var act = _deferred.Dequeue();
+            try { act(); } catch { }
+        }
+        _delayScheduled = false;
+    }
+
     private static void DeferToTableAndExit(Ux_TonkersTableTopiaLayout table, System.Action action)
     {
         if (table == null) return;
         Selection.activeObject = table;
-        EditorApplication.delayCall += () =>
+        EnqueueDeferred(() =>
         {
             if (table != null) action?.Invoke();
             EditorGUIUtility.PingObject(table);
-        };
-        EditorGUIUtility.ExitGUI();
+        });
+        GUIUtility.ExitGUI();
+    }
+
+    private void OnEnable()
+    {
+        _cell = (Ux_TonkersTableTopiaCell)target;
+        _cachedTable = _cell ? _cell.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null;
     }
 }

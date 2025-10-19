@@ -20,8 +20,13 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     public static void RegisterSnack(string menuPath, Func<RectTransform, GameObject> maker)
     {
         if (string.IsNullOrEmpty(menuPath) || maker == null) return;
-        _snacks.RemoveAll(s => s.path == menuPath);
+
+        for (int i = _snacks.Count - 1; i >= 0; i--)
+        {
+            if (_snacks[i].path == menuPath) _snacks.RemoveAt(i);
+        }
         _snacks.Add(new SnackPack(menuPath, maker));
+
         _snacks.Sort((a, b) => string.Compare(a.path, b.path, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -45,12 +50,15 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         System.Action hl = new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, row, col, spanR, spanC));
         AddCancelSelectAndHighlightLikeABoss(m, cellRT, hl);
 
-        foreach (var s in _snacks)
+        for (int i = 0; i < _snacks.Count; i++)
         {
-            m.AddItem(new GUIContent($"Add/{s.path}"), false, () =>
+            var s = _snacks[i];
+            var path = s.path;
+            var baker = s.baker;
+            m.AddItem(new GUIContent($"Add/{path}"), false, () =>
             {
                 Undo.IncrementCurrentGroup();
-                var go = s.baker(cellRT);
+                var go = baker(cellRT);
                 if (go != null)
                 {
                     Undo.RegisterCreatedObjectUndo(go, "Add UI Thingamajig");
@@ -60,33 +68,41 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 }
             });
         }
-
         m.AddSeparator("Add/");
 
         m.AddDisabledItem(new GUIContent($"Cell Info/Row {row + 1}, Col {col + 1}, Span {spanR}x{spanC}"));
+
+        bool hasKid = table.TryFindChildTableInCellLikeSherlock(row, col, out var kidTable);
+        if (hasKid && kidTable != null) m.AddDisabledItem(new GUIContent($"Cell Info/Nested Table/{kidTable.name} (Table)"));
+
+        var infoLines = new List<string>(32);
+        table.GatherCellContentLinesLikeAWaiter(row, col, infoLines);
+        if (infoLines.Count == 0) m.AddDisabledItem(new GUIContent("Cell Info/Contents/(none)"));
+        else
+        {
+            for (int i = 0; i < infoLines.Count; i++)
+                m.AddDisabledItem(new GUIContent($"Cell Info/Contents/{infoLines[i]}"));
+        }
+
         m.AddSeparator("");
 
-        if (canMerge)
-            m.AddItem(new GUIContent("Cells/Merge Selection"), false, () =>
-            {
-                Undo.RecordObject(table, "Merge Cells");
-                table.MergeCellsLikeAGroupHug(r0, c0, rCount, cCount);
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
-            });
-        else
-            m.AddDisabledItem(new GUIContent("Cells/Merge Selection"));
+        if (canMerge) m.AddItem(new GUIContent("Cells/Merge Selection"), false, () =>
+        {
+            Undo.RecordObject(table, "Merge Cells");
+            table.MergeCellsLikeAGroupHug(r0, c0, rCount, cCount);
+            table.FlagLayoutAsNeedingSpaDay();
+            EditorUtility.SetDirty(table);
+        });
+        else m.AddDisabledItem(new GUIContent("Cells/Merge Selection"));
 
-        if (canUnmerge)
-            m.AddItem(new GUIContent("Cells/Unmerge Selection"), false, () =>
-            {
-                Undo.RecordObject(table, "Unmerge");
-                table.UnmergeEverythingInRectLikeItNeverHappened(r0, c0, rCount, cCount);
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
-            });
-        else
-            m.AddDisabledItem(new GUIContent("Cells/Unmerge Selection"));
+        if (canUnmerge) m.AddItem(new GUIContent("Cells/Unmerge Selection"), false, () =>
+        {
+            Undo.RecordObject(table, "Unmerge");
+            table.UnmergeEverythingInRectLikeItNeverHappened(r0, c0, rCount, cCount);
+            table.FlagLayoutAsNeedingSpaDay();
+            EditorUtility.SetDirty(table);
+        });
+        else m.AddDisabledItem(new GUIContent("Cells/Unmerge Selection"));
 
         m.AddSeparator("Cells/");
 
@@ -103,8 +119,14 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         m.AddItem(new GUIContent("Row/Delete"), false, () =>
         {
             Undo.RecordObject(table, rCount > 1 ? "Delete Rows" : "Delete Row");
-            if (rCount > 1) { table.BulkDeleteRowsLikeABoss(r0, r0 + rCount - 1); }
-            else { table.SafeDeleteRowAtWithWittyConfirm(row); }
+            if (rCount > 1)
+            {
+                table.BulkDeleteRowsLikeABoss(r0, r0 + rCount - 1);
+            }
+            else
+            {
+                table.SafeDeleteRowAtWithWittyConfirm(row);
+            }
         });
 
         m.AddItem(new GUIContent("Column/Insert Left"), false, () =>
@@ -120,13 +142,18 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         m.AddItem(new GUIContent("Column/Delete"), false, () =>
         {
             Undo.RecordObject(table, cCount > 1 ? "Delete Columns" : "Delete Column");
-            if (cCount > 1) { table.BulkDeleteColumnsLikeAChamp(c0, c0 + cCount - 1); }
-            else { table.SafeDeleteColumnAtWithWittyConfirm(col); }
+            if (cCount > 1)
+            {
+                table.BulkDeleteColumnsLikeAChamp(c0, c0 + cCount - 1);
+            }
+            else
+            {
+                table.SafeDeleteColumnAtWithWittyConfirm(col);
+            }
         });
 
         m.AddSeparator("");
 
-        bool hasKid = table.TryFindChildTableInCellLikeSherlock(row, col, out var kidTable);
         if (!hasKid)
         {
             m.AddItem(new GUIContent("Nested Table/Add Child Table (1 row, 3 cols, stretch width)"), false, () =>
@@ -135,7 +162,11 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 var child = table.CreateChildTableInCellLikeABaby(row, col);
                 if (child != null) Undo.RegisterCreatedObjectUndo(child.gameObject, "Add Nested Table");
                 table.FlagLayoutAsNeedingSpaDay();
-                if (child != null) { Selection.activeObject = child; EditorGUIUtility.PingObject(child); }
+                if (child != null)
+                {
+                    Selection.activeObject = child;
+                    EditorGUIUtility.PingObject(child);
+                }
             });
         }
         else
@@ -149,11 +180,8 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             {
                 if (kidTable == null) return;
                 Undo.RecordObject(table, "Delete Nested Table");
-#if UNITY_EDITOR
                 if (!Application.isPlaying) Undo.DestroyObjectImmediate(kidTable.gameObject);
-                else
-#endif
-                    UnityEngine.Object.Destroy(kidTable.gameObject);
+                else UnityEngine.Object.Destroy(kidTable.gameObject);
                 table.FlagLayoutAsNeedingSpaDay();
             });
         }
@@ -165,13 +193,12 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     {
         var m = new GenericMenu();
         var colTarget = (UnityEngine.Object)(table.FindFirstAwakeCellInColumnLikeCoffee(colIndex) ?? table.FetchCellRectTransformVIP(0, colIndex) ?? (table as Component));
-        System.Action hl = table != null ? new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(
-            table, 0, colIndex, table.totalRowsCountLetTheShowBegin, 1)) : null;
+        System.Action hl = table != null ? new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, colIndex, table.totalRowsCountLetTheShowBegin, 1)) : null;
+
         AddCancelSelectAndHighlightLikeABoss(m, colTarget, hl);
 
         m.AddItem(new GUIContent("Column/Insert Left"), false, () => { Undo.RecordObject(table, "Insert Column"); table.InsertColumnLikeANinja(colIndex); });
         m.AddItem(new GUIContent("Column/Insert Right"), false, () => { Undo.RecordObject(table, "Insert Column"); table.InsertColumnLikeANinja(colIndex + 1); });
-
         m.AddItem(new GUIContent("Column/Delete"), false, () =>
         {
             Undo.RecordObject(table, "Delete Column(s)");
@@ -212,15 +239,13 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         {
             target = (UnityEngine.Object)(table.FindFirstAwakeCellInColumnLikeCoffee(splitIndex) ?? table.FetchCellRectTransformVIP(0, splitIndex) ?? (table as Component));
             int c0 = Mathf.Clamp(splitIndex, 0, Mathf.Max(0, table.totalColumnsCountHighFive - 2));
-            hl = new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(
-                table, 0, c0, table.totalRowsCountLetTheShowBegin, Mathf.Min(2, table.totalColumnsCountHighFive - c0)));
+            hl = new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, c0, table.totalRowsCountLetTheShowBegin, Mathf.Min(2, table.totalColumnsCountHighFive - c0)));
         }
         else
         {
             target = (UnityEngine.Object)(table.FetchRowRectTransformVIP(splitIndex) ?? (table as Component));
             int r0 = Mathf.Clamp(splitIndex, 0, Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 2));
-            hl = new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(
-                table, r0, 0, Mathf.Min(2, table.totalRowsCountLetTheShowBegin - r0), table.totalColumnsCountHighFive));
+            hl = new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, r0, 0, Mathf.Min(2, table.totalRowsCountLetTheShowBegin - r0), table.totalColumnsCountHighFive));
         }
 
         AddCancelSelectAndHighlightLikeABoss(m, target, hl);
@@ -237,6 +262,7 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             });
 
             AddPercentSettersForColumns(table, m, splitIndex);
+
             m.AddSeparator("Resize/");
             m.AddItem(new GUIContent("Resize/Distribute All Columns Evenly"), false, () =>
             {
@@ -248,6 +274,7 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         else
         {
             AddPercentSettersForRows(table, m, splitIndex);
+
             m.AddSeparator("Resize/");
             m.AddItem(new GUIContent("Resize/Distribute All Rows Evenly"), false, () =>
             {
@@ -264,13 +291,12 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     {
         var m = new GenericMenu();
         var rowRt = table.FetchRowRectTransformVIP(rowIndex) as UnityEngine.Object;
-        System.Action hl = table != null ? new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(
-            table, rowIndex, 0, 1, table.totalColumnsCountHighFive)) : null;
+        System.Action hl = table != null ? new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, rowIndex, 0, 1, table.totalColumnsCountHighFive)) : null;
+
         AddCancelSelectAndHighlightLikeABoss(m, rowRt ?? table, hl);
 
         m.AddItem(new GUIContent("Row/Insert Above"), false, () => { Undo.RecordObject(table, "Insert Row"); table.InsertRowLikeANinja(rowIndex); });
         m.AddItem(new GUIContent("Row/Insert Below"), false, () => { Undo.RecordObject(table, "Insert Row"); table.InsertRowLikeANinja(rowIndex + 1); });
-
         m.AddItem(new GUIContent("Row/Delete"), false, () =>
         {
             Undo.RecordObject(table, "Delete Row(s)");
@@ -304,12 +330,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     public static void ShowForTableHeader(Ux_TonkersTableTopiaLayout table)
     {
         var m = new GenericMenu();
-        System.Action hl = table != null
-            ? new System.Action(() =>
-                Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(
-                    table, 0, 0, table.totalRowsCountLetTheShowBegin, table.totalColumnsCountHighFive))
-            : null;
+        System.Action hl = table != null ? new System.Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, 0, table.totalRowsCountLetTheShowBegin, table.totalColumnsCountHighFive)) : null;
         AddCancelSelectAndHighlightLikeABoss(m, table, hl);
+
         m.AddItem(new GUIContent("Table/Distribute Columns Evenly"), false, () =>
         {
             Undo.RecordObject(table, "Distribute Columns");
@@ -320,6 +343,7 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             table.FlagLayoutAsNeedingSpaDay();
             EditorUtility.SetDirty(table);
         });
+
         m.AddItem(new GUIContent("Table/Distribute Rows Evenly"), false, () =>
         {
             Undo.RecordObject(table, "Distribute Rows");
@@ -330,17 +354,11 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             table.FlagLayoutAsNeedingSpaDay();
             EditorUtility.SetDirty(table);
         });
+
         m.AddSeparator("Table/");
-        m.AddItem(new GUIContent("Table/Insert Row At Top"), false, () =>
-        {
-            Undo.RecordObject(table, "Insert Row");
-            table.InsertRowLikeANinja(0);
-        });
-        m.AddItem(new GUIContent("Table/Insert Column At Left"), false, () =>
-        {
-            Undo.RecordObject(table, "Insert Column");
-            table.InsertColumnLikeANinja(0);
-        });
+        m.AddItem(new GUIContent("Table/Insert Row At Top"), false, () => { Undo.RecordObject(table, "Insert Row"); table.InsertRowLikeANinja(0); });
+        m.AddItem(new GUIContent("Table/Insert Column At Left"), false, () => { Undo.RecordObject(table, "Insert Column"); table.InsertColumnLikeANinja(0); });
+
         m.ShowAsContext();
     }
 
@@ -349,31 +367,36 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         m.AddItem(new GUIContent("Cancel"), false, () => { });
         if (selectTarget != null) m.AddItem(new GUIContent("Select"), false, () => { selectTarget.SelectAndPingLikeABeacon(); });
         else m.AddDisabledItem(new GUIContent("Select"));
+
         if (highlightAction != null) m.AddItem(new GUIContent("Highlight"), false, () => { highlightAction(); });
         else m.AddDisabledItem(new GUIContent("Highlight"));
+
         m.AddSeparator("");
     }
 
     private static void AddPercentSettersForColumns(Ux_TonkersTableTopiaLayout table, GenericMenu m, int index)
     {
         float[] picks = { 0.1f, 0.25f, 1f / 3f, 0.5f, 0.75f };
-        foreach (var p in picks)
+        for (int i = 0; i < picks.Length; i++)
         {
+            var p = picks[i];
             m.AddItem(new GUIContent($"Resize/Set Column {index + 1} To/{Mathf.RoundToInt(p * 100f)}%"), false, () =>
             {
                 Undo.RecordObject(table, "Set Column %");
                 table.SyncColumnWardrobes();
+
                 float keep = Mathf.Clamp01(-table.fancyColumnWardrobes[index].requestedWidthMaybePercentIfNegative);
                 float delta = p - keep;
+
                 float sumOthers = 0f;
-                for (int i = 0; i < table.totalColumnsCountHighFive; i++)
-                    if (i != index) sumOthers += Mathf.Clamp01(-table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative);
+                for (int c = 0; c < table.totalColumnsCountHighFive; c++) if (c != index) sumOthers += Mathf.Clamp01(-table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative);
                 float scale = sumOthers > 0.0001f ? Mathf.Clamp01((sumOthers - delta) / sumOthers) : 1f;
+
                 table.fancyColumnWardrobes[index].requestedWidthMaybePercentIfNegative = -p;
-                for (int i = 0; i < table.totalColumnsCountHighFive; i++)
-                    if (i != index)
-                        table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative =
-                            -Mathf.Clamp01(Mathf.Clamp01(-table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative) * scale);
+                for (int c = 0; c < table.totalColumnsCountHighFive; c++)
+                    if (c != index)
+                        table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(Mathf.Clamp01(-table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative) * scale);
+
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
             });
@@ -383,23 +406,26 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     private static void AddPercentSettersForRows(Ux_TonkersTableTopiaLayout table, GenericMenu m, int index)
     {
         float[] picks = { 0.1f, 0.25f, 1f / 3f, 0.5f, 0.75f };
-        foreach (var p in picks)
+        for (int i = 0; i < picks.Length; i++)
         {
+            var p = picks[i];
             m.AddItem(new GUIContent($"Resize/Set Row {index + 1} To/{Mathf.RoundToInt(p * 100f)}%"), false, () =>
             {
                 Undo.RecordObject(table, "Set Row %");
                 table.SyncRowWardrobes();
+
                 float keep = Mathf.Clamp01(-table.snazzyRowWardrobes[index].requestedHeightMaybePercentIfNegative);
                 float delta = p - keep;
+
                 float sumOthers = 0f;
-                for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++)
-                    if (i != index) sumOthers += Mathf.Clamp01(-table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative);
+                for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++) if (r != index) sumOthers += Mathf.Clamp01(-table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative);
                 float scale = sumOthers > 0.0001f ? Mathf.Clamp01((sumOthers - delta) / sumOthers) : 1f;
+
                 table.snazzyRowWardrobes[index].requestedHeightMaybePercentIfNegative = -p;
-                for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++)
-                    if (i != index)
-                        table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative =
-                            -Mathf.Clamp01(Mathf.Clamp01(-table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative) * scale);
+                for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++)
+                    if (r != index)
+                        table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(Mathf.Clamp01(-table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative) * scale);
+
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
             });
