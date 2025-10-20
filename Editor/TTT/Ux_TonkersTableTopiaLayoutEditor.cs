@@ -723,7 +723,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         bool isResizing = dragCol >= 0 || dragRow >= 0;
         var e = Event.current;
-
         bool hasRect = HasRectSelection();
         int selR0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
         int selC0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
@@ -743,7 +742,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     x += colW[c] + table.sociallyDistancedColumnsPixels;
                     continue;
                 }
-
                 float w = Sum(colW, c, spanC) + table.sociallyDistancedColumnsPixels * (spanC - 1);
                 float h = Sum(rowH, r, spanR) + table.sociallyDistancedRowsPixels * (spanR - 1);
                 var cellRect = new Rect(x, y, w, h);
@@ -766,9 +764,9 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
                 bool hasChildTable = table.TryFindChildTableInCellLikeSherlock(r, c, out var childTbl);
 
-                _snackTypesScratch.Clear();
-                table.ScoutUiSnacksInCellLikeAHawk(r, c, _snackTypesScratch, true);
-                BuildCellBadgeGuiLikeScoutPatches(_snackTypesScratch, hasChildTable, _badgesScratch);
+                var snackCounts = new Dictionary<System.Type, int>(8);
+                table.ScoutUiSnackCountsInCellLikeBeanCounter(r, c, snackCounts, true);
+                BuildCellBadgeGuiLikeScoutPatches(snackCounts, hasChildTable, _badgesScratch);
                 if (_badgesScratch.Count > 0) DrawCellBadgesLikeFlair(cellRect, _badgesScratch, r, c);
                 _badgesScratch.Clear();
 
@@ -797,19 +795,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         {
                             if (e.shift && selRow >= 0 && selCol >= 0)
                             {
-                                selRow2 = r;
-                                selCol2 = c;
+                                selRow2 = r; selCol2 = c;
                             }
                             else
                             {
-                                selRow = r;
-                                selCol = c;
-                                selRow2 = r;
-                                selCol2 = c;
+                                selRow = r; selCol = c; selRow2 = r; selCol2 = c;
                             }
-                            headerRowBigEnchilada = -1;
-                            headerColBigEnchilada = -1;
-
+                            headerRowBigEnchilada = -1; headerColBigEnchilada = -1;
                             if (actionMode == EditorActionMode.SelectObjects)
                             {
                                 var cell = table.GrabCellLikeItOwesYouRent(r, c);
@@ -830,9 +822,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 if (!overHandle && cellRect.Contains(e.mousePosition) && ((e.type == EventType.MouseDown && e.button == 1) || e.type == EventType.ContextClick))
                 {
                     Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForCell(
-                        table, r, c, spanR, spanC,
-                        canMerge, canUnmerge,
-                        selR0, selC0, selRCount, selCCount);
+                        table, r, c, spanR, spanC, canMerge, canUnmerge, selR0, selC0, selRCount, selCCount);
                     e.Use();
                     Repaint();
                 }
@@ -1059,7 +1049,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         }
     }
 
-    // Ux_TonkersTableTopiaLayoutEditor
     private void DrawSelectionSectionLikeDessert()
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
@@ -1904,28 +1893,48 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         EditorUtility.SetDirty(table);
     }
 
-    private void BuildCellBadgeGuiLikeScoutPatches(HashSet<System.Type> snackTypes, bool includeTableBadge, List<GUIContent> outBadges)
+    private void BuildCellBadgeGuiLikeScoutPatches(Dictionary<System.Type, int> snackCounts, bool includeTableBadge, List<GUIContent> outBadges)
     {
         outBadges.Clear();
         if (includeTableBadge) outBadges.Add(new GUIContent("T"));
 
+        if (snackCounts == null || snackCounts.Count == 0) return;
+
         for (int i = 0; i < _badgeOrder.Length; i++)
         {
             var tp = _badgeOrder[i];
-            if (!snackTypes.Contains(tp)) continue;
+            if (!snackCounts.TryGetValue(tp, out var count) || count <= 0) continue;
 
             if (!_badgeIconCache.TryGetValue(tp, out var gc))
             {
-                var raw = EditorGUIUtility.ObjectContent(null, tp);
-                gc = (raw != null && raw.image != null) ? new GUIContent(raw.image) : new GUIContent(ShortCodeForSnackLikeAcronym(tp));
+                gc = IconForSnackTypeLikeSmiley(tp);
                 _badgeIconCache[tp] = gc;
             }
-            outBadges.Add(gc);
+            for (int k = 0; k < count; k++) outBadges.Add(gc);
+        }
+
+        foreach (var kvp in snackCounts)
+        {
+            var tp = kvp.Key;
+            int count = kvp.Value;
+            if (count <= 0) continue;
+
+            bool alreadyStandard = false;
+            for (int i = 0; i < _badgeOrder.Length; i++) if (_badgeOrder[i] == tp) { alreadyStandard = true; break; }
+            if (alreadyStandard) continue;
+
+            if (!_badgeIconCache.TryGetValue(tp, out var gc))
+            {
+                gc = IconForSnackTypeLikeSmiley(tp);
+                _badgeIconCache[tp] = gc;
+            }
+            for (int k = 0; k < count; k++) outBadges.Add(gc);
         }
     }
 
     private GUIContent IconForSnackTypeLikeSmiley(System.Type t)
     {
+        if (t == null || t == typeof(UnityEngine.Object)) return new GUIContent("?");
         var gc = EditorGUIUtility.ObjectContent(null, t);
         if (gc != null && gc.image != null) return new GUIContent(gc.image);
         return new GUIContent(ShortCodeForSnackLikeAcronym(t));
@@ -2053,20 +2062,18 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (!moveDragActive) return;
         if (moveSrcRow < 0 || moveSrcCol < 0) return;
 
-        _snackTypesScratch.Clear();
+        var snackCounts = new Dictionary<System.Type, int>(8);
         bool hasChildTable = table.TryFindChildTableInCellLikeSherlock(moveSrcRow, moveSrcCol, out _);
-        table.ScoutUiSnacksInCellLikeAHawk(moveSrcRow, moveSrcCol, _snackTypesScratch, true);
-        BuildCellBadgeGuiLikeScoutPatches(_snackTypesScratch, hasChildTable, _badgesScratch);
+        table.ScoutUiSnackCountsInCellLikeBeanCounter(moveSrcRow, moveSrcCol, snackCounts, true);
+        BuildCellBadgeGuiLikeScoutPatches(snackCounts, hasChildTable, _badgesScratch);
         if (_badgesScratch.Count == 0) return;
 
         var e = Event.current;
         Vector2 pos = e.mousePosition;
-
         const float size = 16f;
         const float pad = 3f;
         float width = _badgesScratch.Count * (size + 1f) + pad * 2f;
         float height = size + pad * 2f;
-
         var box = new Rect(pos.x + 12f, pos.y + 12f, width, height);
         EditorGUI.DrawRect(box, new Color(0f, 0f, 0f, 0.15f));
         EditorGUI.DrawRect(new Rect(box.x, box.y, box.width, 1f), new Color(0f, 0f, 0f, 0.25f));
@@ -2082,14 +2089,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             else GUI.Label(r, b, MiniBoldCenter);
             x += size + 1f;
         }
-    }
-
-    private bool CellHasMovablesLikeSuitcases(int r, int c)
-    {
-        var srcMainRT = table.FetchCellRectTransformVIP(r, c);
-        if (srcMainRT == null) return false;
-        if (srcMainRT.HasForeignKidsLikeStowaways()) return true;
-        return table.TryFindChildTableInCellLikeSherlock(r, c, out _);
+        _badgesScratch.Clear();
     }
 
     private void StartMoveDragLikeAUhaul(int r, int c)
