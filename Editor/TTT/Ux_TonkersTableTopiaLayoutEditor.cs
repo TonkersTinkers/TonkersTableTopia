@@ -226,7 +226,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void ApplyColResize(int splitIndex, float deltaContent)
     {
         EnsureColumnStylesSize();
-
         int left = splitIndex;
         int right = splitIndex + 1;
         if (left < 0 || right >= table.totalColumnsCountHighFive) return;
@@ -237,20 +236,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         float deltaPct = deltaContent / availW;
 
         const float floor = 0.01f;
-
         EnsureFloatBuffer(ref _basePctBuf, startColW.Length);
         System.Array.Copy(startColW, _basePctBuf, startColW.Length);
 
         float l = Mathf.Clamp01(_basePctBuf[left]);
         float r = Mathf.Clamp01(_basePctBuf[right]);
-
         Ux_TonkersTableTopiaExtensions.RebalanceTwoPercentsLikeSeesaw(ref l, ref r, deltaPct, floor);
-
         _basePctBuf[left] = l;
         _basePctBuf[right] = r;
 
         for (int i = 0; i < table.totalColumnsCountHighFive; i++)
             table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
+
+        DadHudSaveColumnsFromArraysLikeReceipt(left, right, startColW, _basePctBuf);
 
         EditorUtility.SetDirty(table);
     }
@@ -260,8 +258,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         EnsureRowStylesSize();
         int top = splitIndex;
         int bottom = splitIndex + 1;
+
         float availH = Mathf.Max(1f, _lastInnerHeight - table.sociallyDistancedRowsPixels * Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 1));
         float deltaPct = deltaContent / availH;
+
         EnsureFloatBuffer(ref _basePctBuf, startRowH != null ? startRowH.Length : 0);
         if (startRowH != null) System.Array.Copy(startRowH, _basePctBuf, startRowH.Length);
 
@@ -283,6 +283,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
         for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++)
             table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
+
+        DadHudSaveRowsFromArraysLikeReceipt(top, bottom, startRowH, _basePctBuf);
 
         EditorUtility.SetDirty(table);
     }
@@ -393,6 +395,93 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             return;
         }
         if (buf == null || buf.Length != len) buf = new float[len];
+    }
+
+    private void DadHudSaveColumnsFromArraysLikeReceipt(int left, int right, float[] startPct, float[] newPct)
+    {
+        if (table == null || startPct == null || newPct == null) return;
+        var list = new List<(int idx, float start, float now)>(2)
+    {
+        (left,  Mathf.Clamp01(startPct[left]),  Mathf.Clamp01(newPct[left])),
+        (right, Mathf.Clamp01(startPct[right]), Mathf.Clamp01(newPct[right]))
+    };
+        DadHudSaveLikeFridgeNote(true, list);
+    }
+
+    private void DadHudSaveRowsFromArraysLikeReceipt(int top, int bottom, float[] startPct, float[] newPct)
+    {
+        if (table == null || startPct == null || newPct == null) return;
+        var list = new List<(int idx, float start, float now)>(2)
+    {
+        (top,    Mathf.Clamp01(startPct[top]),    Mathf.Clamp01(newPct[top])),
+        (bottom, Mathf.Clamp01(startPct[bottom]), Mathf.Clamp01(newPct[bottom]))
+    };
+        DadHudSaveLikeFridgeNote(false, list);
+    }
+
+    private void DadHudSaveLikeFridgeNote(bool isColumn, List<(int idx, float start, float now)> items)
+    {
+        if (table == null || items == null || items.Count == 0) return;
+        string key = "TTT_ResizeSnack_" + table.GetInstanceID().ToString();
+        string type = isColumn ? "C" : "R";
+        string ts = EditorApplication.timeSinceStartup.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        var sb = new System.Text.StringBuilder(256);
+        sb.Append(type).Append('|').Append(ts).Append('|');
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            sb.Append(it.idx.ToString());
+            sb.Append(',');
+            sb.Append(it.start.ToString("F6", System.Globalization.CultureInfo.InvariantCulture));
+            sb.Append(',');
+            sb.Append(it.now.ToString("F6", System.Globalization.CultureInfo.InvariantCulture));
+            if (i < items.Count - 1) sb.Append(';');
+        }
+        EditorPrefs.SetString(key, sb.ToString());
+    }
+
+    private bool DadHudTryLoadLikeLeftovers(out bool isColumn, out double timestamp, out List<(int idx, float start, float now)> items)
+    {
+        isColumn = true;
+        timestamp = 0d;
+        items = null;
+        if (table == null) return false;
+        string key = "TTT_ResizeSnack_" + table.GetInstanceID().ToString();
+        string raw = EditorPrefs.GetString(key, string.Empty);
+        if (string.IsNullOrEmpty(raw)) return false;
+
+        var parts = raw.Split('|');
+        if (parts.Length != 3) return false;
+
+        isColumn = parts[0] == "C";
+        if (!double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out timestamp)) return false;
+
+        var list = new List<(int idx, float start, float now)>(4);
+        var entries = parts[2].Split(';');
+        for (int i = 0; i < entries.Length; i++)
+        {
+            var trip = entries[i].Split(',');
+            if (trip.Length != 3) continue;
+            if (!int.TryParse(trip[0], out var idx)) continue;
+            if (!float.TryParse(trip[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s)) continue;
+            if (!float.TryParse(trip[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n)) continue;
+            list.Add((idx, Mathf.Clamp01(s), Mathf.Clamp01(n)));
+        }
+        if (list.Count == 0) return false;
+        items = list;
+        return true;
+    }
+
+    private static string DadPctLikeProudParent(float v)
+    {
+        return (v * 100f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
+
+    private static string DadDeltaLikeScaleDrama(float dv)
+    {
+        float p = dv * 100f;
+        string sign = p >= 0f ? "+" : "";
+        return sign + p.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%";
     }
 
     private void DeleteCol()
@@ -992,6 +1081,43 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         }
     }
 
+    private void DrawResizeHudLikeStretchyPants()
+    {
+        if (table == null) return;
+        const double lingerSeconds = 3.0;
+        bool isCol;
+        double ts;
+        List<(int idx, float start, float now)> items;
+        if (!DadHudTryLoadLikeLeftovers(out isCol, out ts, out items)) return;
+
+        double age = EditorApplication.timeSinceStartup - ts;
+        bool activeDrag = (isCol && dragCol >= 0) || (!isCol && dragRow >= 0);
+        if (!activeDrag && age > lingerSeconds) return;
+        if (items == null || items.Count == 0) return;
+
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+        {
+            GUILayout.Label("Resize", GUILayout.Width(70));
+            var sb = new System.Text.StringBuilder(256);
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                string tag = isCol ? "C" + (it.idx + 1).ToString() : "R" + (it.idx + 1).ToString();
+                float d = it.now - it.start;
+                sb.Append(tag);
+                sb.Append(": ");
+                sb.Append(DadPctLikeProudParent(it.start));
+                sb.Append(" -> ");
+                sb.Append(DadPctLikeProudParent(it.now));
+                sb.Append(" (");
+                sb.Append(DadDeltaLikeScaleDrama(d));
+                sb.Append(')');
+                if (i < items.Count - 1) sb.Append("   ");
+            }
+            EditorGUILayout.LabelField(sb.ToString(), EditorStyles.miniLabel);
+        }
+    }
+
     private void DrawRowStyleInspectorForHeaderHoncho(int rIdx)
     {
         table.SyncRowWardrobes();
@@ -1063,10 +1189,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             if (GUILayout.Button("Ping", GUILayout.Width(w2))) PingActiveCell();
         }
 
+        DrawResizeHudLikeStretchyPants();
+
         if (!HasSelection() || table == null) return;
 
         bool singleCell = selRow == selRow2 && selCol == selCol2 && headerColBigEnchilada < 0 && headerRowBigEnchilada < 0;
-
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUILayout.Label("Align", GUILayout.Width(50));
@@ -1074,7 +1201,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             int r1 = Mathf.Max(selRow, selRow2);
             int c0 = Mathf.Min(selCol, selCol2);
             int c1 = Mathf.Max(selCol, selCol2);
-
             bool leftOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
             bool centerOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
             bool rightOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
@@ -1082,40 +1208,31 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             bool middleOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
             bool bottomOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
             bool fullOn = table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
-
             float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
-
             EditorGUI.BeginDisabledGroup(leftOn);
             if (GUILayout.Button("Left", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(centerOn);
             if (GUILayout.Button("Center", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(rightOn);
             if (GUILayout.Button("Right", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(topOn);
             if (GUILayout.Button("Top", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(middleOn);
             if (GUILayout.Button("Middle", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(bottomOn);
             if (GUILayout.Button("Bottom", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom); Repaint(); }
             EditorGUI.EndDisabledGroup();
-
             EditorGUI.BeginDisabledGroup(fullOn);
             if (GUILayout.Button("Full", GUILayout.Width(w7))) { ApplyFullAlignmentToSelectionLikeFittedSheet(); Repaint(); }
             EditorGUI.EndDisabledGroup();
         }
 
         if (!singleCell) return;
-
         var rt = table.FetchCellRectTransformVIP(selRow, selCol);
         if (rt == null) return;
 
