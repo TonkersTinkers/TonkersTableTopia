@@ -37,53 +37,102 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     }
 
     public static void ShowForCell(
-    Ux_TonkersTableTopiaLayout table,
-    int r,
-    int c,
-    int spanR,
-    int spanC,
-    bool canMerge,
-    bool canUnmerge,
-    int selR0,
-    int selC0,
-    int selRCount,
-    int selCCount)
+     Ux_TonkersTableTopiaLayout table,
+     int r,
+     int c,
+     int spanR,
+     int spanC,
+     bool canMerge,
+     bool canUnmerge,
+     int selR0,
+     int selC0,
+     int selRCount,
+     int selCCount)
     {
         if (table == null) return;
         var cellRT = table.FetchCellRectTransformVIP(r, c);
         if (cellRT == null) return;
-
+    
         var gm = new GenericMenu();
         var selectTarget = (UnityEngine.Object)(cellRT.GetComponent<Ux_TonkersTableTopiaCell>() ?? (UnityEngine.Object)cellRT);
-
         Action hl = new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, r, c, spanR, spanC));
         AddCancelSelectAndHighlightLikeABoss(gm, selectTarget, hl);
-
+    
         gm.AddDisabledItem(new GUIContent($"Row {r + 1}, Col {c + 1}"));
         gm.AddDisabledItem(new GUIContent($"Span Rows {spanR}, Cols {spanC}"));
-
-        if (canMerge)
-            gm.AddItem(new GUIContent("Merge Selection"), false, () =>
-            {
-                Undo.RecordObject(table, "Merge Cells");
-                table.MergeCellsLikeAGroupHug(selR0, selC0, selRCount, selCCount);
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
-            });
+    
+        if (canMerge) gm.AddItem(new GUIContent("Merge Selection"), false, () =>
+        {
+            Undo.RecordObject(table, "Merge Cells");
+            table.MergeCellsLikeAGroupHug(selR0, selC0, selRCount, selCCount);
+            table.FlagLayoutAsNeedingSpaDay();
+            EditorUtility.SetDirty(table);
+        });
         else gm.AddDisabledItem(new GUIContent("Merge Selection"));
-
-        if (canUnmerge)
-            gm.AddItem(new GUIContent("Unmerge Selection"), false, () =>
-            {
-                Undo.RecordObject(table, "Unmerge Selection");
-                table.UnmergeEverythingInRectLikeItNeverHappened(selR0, selC0, selRCount, selCCount);
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
-            });
+    
+        if (canUnmerge) gm.AddItem(new GUIContent("Unmerge Selection"), false, () =>
+        {
+            Undo.RecordObject(table, "Unmerge Selection");
+            table.UnmergeEverythingInRectLikeItNeverHappened(selR0, selC0, selRCount, selCCount);
+            table.FlagLayoutAsNeedingSpaDay();
+            EditorUtility.SetDirty(table);
+        });
         else gm.AddDisabledItem(new GUIContent("Unmerge Selection"));
-
+    
         gm.AddSeparator("");
-
+    
+        gm.AddItem(new GUIContent("Row/Insert Above"), false, () =>
+        {
+            Undo.RecordObject(table, "Insert Row");
+            table.InsertRowLikeANinja(selR0);
+        });
+        gm.AddItem(new GUIContent("Row/Insert Below"), false, () =>
+        {
+            Undo.RecordObject(table, "Insert Row");
+            table.InsertRowLikeANinja(selR0 + selRCount);
+        });
+        gm.AddItem(new GUIContent("Row/Delete"), false, () =>
+        {
+            Undo.RecordObject(table, "Delete Row(s)");
+            if (selRCount > 1)
+            {
+                if (!table.BulkDeleteRowsLikeABoss(selR0, selR0 + selRCount - 1))
+                    EditorUtility.DisplayDialog("Row Removal", "Could not delete the selected rows due to merged cells or minimum row limit.", "OK");
+            }
+            else
+            {
+                table.SafeDeleteRowAtWithWittyConfirm(r);
+            }
+        });
+    
+        gm.AddSeparator("Row/");
+    
+        gm.AddItem(new GUIContent("Column/Insert Left"), false, () =>
+        {
+            Undo.RecordObject(table, "Insert Column");
+            table.InsertColumnLikeANinja(selC0);
+        });
+        gm.AddItem(new GUIContent("Column/Insert Right"), false, () =>
+        {
+            Undo.RecordObject(table, "Insert Column");
+            table.InsertColumnLikeANinja(selC0 + selCCount);
+        });
+        gm.AddItem(new GUIContent("Column/Delete"), false, () =>
+        {
+            Undo.RecordObject(table, "Delete Column(s)");
+            if (selCCount > 1)
+            {
+                if (!table.BulkDeleteColumnsLikeAChamp(selC0, selC0 + selCCount - 1))
+                    EditorUtility.DisplayDialog("Column Removal", "Could not delete the selected columns due to merged cells or minimum column limit.", "OK");
+            }
+            else
+            {
+                table.SafeDeleteColumnAtWithWittyConfirm(c);
+            }
+        });
+    
+        gm.AddSeparator("");
+    
         for (int i = 0; i < _snacks.Count; i++)
         {
             var s = _snacks[i];
@@ -95,9 +144,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 EditorUtility.SetDirty(table);
             });
         }
-
+    
         gm.AddSeparator("");
-
+    
         var foreignKids = new List<Transform>(16);
         cellRT.ListForeignKidsLikeRollCall(foreignKids);
         if (foreignKids.Count == 0)
@@ -123,9 +172,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 });
             }
         }
-
+    
         gm.AddSeparator("");
-
+    
         Ux_TonkersTableTopiaLayout kidTable = null;
         bool hasKid = table.TryFindChildTableInCellLikeSherlock(r, c, out kidTable);
         if (!hasKid)
@@ -159,11 +208,12 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 EditorUtility.SetDirty(table);
             });
         }
-
+    
         gm.AddSeparator("");
         AddAlignSubmenuForCell(gm, table, r, c);
         gm.ShowAsContext();
     }
+
 
     public static void ShowForColumnHeader(Ux_TonkersTableTopiaLayout table, int colIndex)
     {
@@ -601,4 +651,5 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             EditorUtility.SetDirty(table);
         });
     }
+
 }
