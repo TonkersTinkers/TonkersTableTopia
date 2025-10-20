@@ -1165,6 +1165,46 @@ public static class Ux_TonkersTableTopiaExtensions
         }
     }
 
+    public static void ScoutUiSnackCountsInCellLikeBeanCounter(this Ux_TonkersTableTopiaLayout t, int row, int col, Dictionary<System.Type, int> bag, bool includeInactive = true)
+    {
+        if (bag == null) return;
+        bag.Clear();
+        if (t == null) return;
+        var cell = t.FetchCellRectTransformVIP(row, col);
+        if (cell == null) return;
+
+        for (int i = 0; i < cell.childCount; i++)
+        {
+            var ch = cell.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            var go = ch.gameObject;
+            if (!includeInactive && !go.activeInHierarchy) continue;
+            if (go.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (go.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (go.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            var snackType = DecideSnackTypeForGoLikeBuffetPlate(go);
+            if (!bag.TryGetValue(snackType, out var n)) n = 0;
+            bag[snackType] = n + 1;
+        }
+    }
+
+    private static System.Type DecideSnackTypeForGoLikeBuffetPlate(GameObject go)
+    {
+        if (go == null) return typeof(UnityEngine.Object);
+        if (go.GetComponent<Button>() != null) return typeof(Button);
+        if (go.GetComponent<Toggle>() != null) return typeof(Toggle);
+        if (go.GetComponent<Slider>() != null) return typeof(Slider);
+        if (go.GetComponent<Dropdown>() != null) return typeof(Dropdown);
+        if (go.GetComponent<Scrollbar>() != null) return typeof(Scrollbar);
+        if (go.GetComponent<ScrollRect>() != null) return typeof(ScrollRect);
+        if (go.GetComponent<InputField>() != null) return typeof(InputField);
+        if (go.GetComponent<Text>() != null) return typeof(Text);
+        if (go.GetComponent<RawImage>() != null) return typeof(RawImage);
+        if (go.GetComponent<Image>() != null) return typeof(Image);
+        return typeof(UnityEngine.Object);
+    }
+
     public static bool HasForeignKidsLikeStowaways(this RectTransform parent)
     {
         if (parent == null) return false;
@@ -1234,7 +1274,6 @@ public static class Ux_TonkersTableTopiaExtensions
         }
     }
 
-    // class: Ux_TonkersTableTopiaExtensions
     public static bool MoveNestedTablesLikeACaravan(this Ux_TonkersTableTopiaLayout t, RectTransform from, RectTransform to)
     {
         if (t == null || from == null || to == null) return false;
