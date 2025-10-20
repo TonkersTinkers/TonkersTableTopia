@@ -150,38 +150,24 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             }
 
             DrawActionModeHelpdeskWithDadJokes();
-
-            float hZoom = EditorPrefs.GetFloat("Ux_HZoom", 1f);
-            float vZoom = EditorPrefs.GetFloat("Ux_VZoom", 1f);
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.Label("VZoom", GUILayout.Width(48));
-                vZoom = EditorGUILayout.Slider(vZoom, 0.25f, 3f);
-                GUILayout.Space(10);
-                GUILayout.Label("HZoom", GUILayout.Width(48));
-                hZoom = EditorGUILayout.Slider(hZoom, 0.25f, 3f);
-            }
-
-            EditorPrefs.SetFloat("Ux_HZoom", Mathf.Clamp(hZoom, 0.25f, 3f));
-            EditorPrefs.SetFloat("Ux_VZoom", Mathf.Clamp(vZoom, 0.25f, 3f));
         }
 
         DrawTableButtonsToolbarLikeASpreadsheet();
-
         if (showPreview) DrawWysiwyg();
         if (showPreview) DrawSelectionSectionLikeDessert();
 
         EditorGUILayout.Space(6);
         DrawHeaderInspectorIfTheBossIsWatching();
         DrawCellInspectorForHighlightedSnacks();
+
         EditorGUILayout.Space(6);
         DrawTableSizeControls();
+
         EditorGUILayout.Space(6);
         DrawAlternatingColorsUI();
         DrawWysiwygPreviewColorPrefs();
-        EditorGUILayout.Space(4);
 
+        EditorGUILayout.Space(4);
         showDefaultInspector = EditorGUILayout.Foldout(showDefaultInspector, "Advanced (Default Inspector)");
         if (showDefaultInspector) DrawDefaultInspector();
 
@@ -1456,7 +1442,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (table.totalRowsCountLetTheShowBegin < 1 || table.totalColumnsCountHighFive < 1) return;
 
         var tableRT = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
-
         float innerW = Mathf.Max(1f, tableRT.rect.width - table.comfyPaddingLeftForElbows - table.comfyPaddingRightForElbows);
         float innerH = Mathf.Max(1f, tableRT.rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
 
@@ -1469,7 +1454,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
             table.sociallyDistancedColumnsPixels,
             innerW,
-            ref _previewColBuf);
+            ref _previewColBuf
+        );
 
         EnsureFloatBuffer(ref _previewRowBuf, rows);
         Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
@@ -1477,7 +1463,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
             table.sociallyDistancedRowsPixels,
             innerH,
-            ref _previewRowBuf);
+            ref _previewRowBuf
+        );
 
         for (int c = 0; c < _previewColBuf.Length; c++) if (_previewColBuf[c] < 1f) _previewColBuf[c] = 1f;
         for (int r = 0; r < _previewRowBuf.Length; r++) if (_previewRowBuf[r] < 1f) _previewRowBuf[r] = 1f;
@@ -1494,14 +1481,21 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         float headerW = 34f;
 
         float hZoom = Mathf.Clamp(EditorPrefs.GetFloat("Ux_HZoom", 1f), 0.25f, 3f);
-        float vZoom = Mathf.Clamp(EditorPrefs.GetFloat("Ux_VZoom", 1f), 0.25f, 3f);
+        float vZoomBase = EditorPrefs.GetFloat("Ux_VZoom", 1f);
+        float vZoomLive = EditorPrefs.GetFloat("Ux_VZoom_FreeLive", vZoomBase);
+        bool vzoomDraggingNow = EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1;
+        if (!vzoomDraggingNow && Mathf.Abs(vZoomLive - vZoomBase) > 0.0001f)
+        {
+            vZoomLive = vZoomBase;
+            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", vZoomLive);
+        }
+        float vZoom = Mathf.Max(0.001f, vZoomLive);
 
         float requestedW = Mathf.Max(1f, natW * hZoom);
         float contentH = Mathf.Max(1f, natH * vZoom);
         float totalH = headerH + contentH;
 
         Rect previewRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(totalH), GUILayout.ExpandWidth(true));
-
         float availW = Mathf.Max(1f, previewRect.width - headerW - 6f);
         float appliedScaleX = (natW > 0f) ? Mathf.Min(hZoom, availW / natW) : hZoom;
         float contentW = Mathf.Min(natW * appliedScaleX, availW);
@@ -1545,6 +1539,46 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         _lastInnerHeight = innerH;
 
         var e = Event.current;
+
+        Rect vzoomGrabbyMcHandle = new Rect(gridRect.x, gridRect.yMax - 4f, gridRect.width, 8f);
+        EditorGUIUtility.AddCursorRect(vzoomGrabbyMcHandle, MouseCursor.ResizeVertical);
+        EditorGUI.DrawRect(vzoomGrabbyMcHandle, new Color(0f, 0f, 0f, 0.08f));
+        var grip = new Rect(vzoomGrabbyMcHandle.x + vzoomGrabbyMcHandle.width * 0.5f - 16f, vzoomGrabbyMcHandle.y + 1f, 32f, 2f);
+        EditorGUI.DrawRect(grip, new Color(0f, 0f, 0f, 0.25f));
+
+        if (e.type == EventType.MouseDown && e.button == 0 && vzoomGrabbyMcHandle.Contains(e.mousePosition))
+        {
+            EditorPrefs.SetInt("Ux_VZoom_Dragging", 1);
+            EditorPrefs.SetFloat("Ux_VZoom_StartMouse", e.mousePosition.y);
+            EditorPrefs.SetFloat("Ux_VZoom_StartValue", vZoom);
+            GUIUtility.hotControl = GUIUtility.GetControlID(FocusType.Passive);
+            e.Use();
+            Repaint();
+        }
+
+        if (EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1 && e.type == EventType.MouseDrag)
+        {
+            float startMouse = EditorPrefs.GetFloat("Ux_VZoom_StartMouse", e.mousePosition.y);
+            float startV = EditorPrefs.GetFloat("Ux_VZoom_StartValue", vZoom);
+            float dy = e.mousePosition.y - startMouse;
+            float newV = startV + dy / Mathf.Max(1f, natH);
+            if (newV < 0.001f) newV = 0.001f;
+            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", newV);
+            vZoom = newV;
+            e.Use();
+            Repaint();
+        }
+
+        if (EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1 && e.type == EventType.MouseUp)
+        {
+            EditorPrefs.SetInt("Ux_VZoom_Dragging", 0);
+            EditorPrefs.SetFloat("Ux_VZoom", vZoom);
+            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", vZoom);
+            GUIUtility.hotControl = 0;
+            e.Use();
+            Repaint();
+        }
+
         if (e.type == EventType.MouseDown && e.button == 0 && headCornerRect.Contains(e.mousePosition))
         {
             SetHighlightLikeAGlowStick(table, 0, 0, table.totalRowsCountLetTheShowBegin, table.totalColumnsCountHighFive);
@@ -1553,6 +1587,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             e.Use();
             Repaint();
         }
+
         if (e.type == EventType.ContextClick && headCornerRect.Contains(e.mousePosition))
         {
             Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForTableHeader(table);
