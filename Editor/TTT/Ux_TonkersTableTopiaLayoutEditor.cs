@@ -226,30 +226,28 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void ApplyColResize(int splitIndex, float deltaContent)
     {
         EnsureColumnStylesSize();
+
         int left = splitIndex;
         int right = splitIndex + 1;
+        if (left < 0 || right >= table.totalColumnsCountHighFive) return;
+        if (startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
 
-        float availW = Mathf.Max(1f, _lastInnerWidth - table.sociallyDistancedColumnsPixels * Mathf.Max(0, table.totalColumnsCountHighFive - 1));
+        float spacing = table.sociallyDistancedColumnsPixels * Mathf.Max(0, table.totalColumnsCountHighFive - 1);
+        float availW = Mathf.Max(1f, _lastInnerWidth - spacing);
         float deltaPct = deltaContent / availW;
 
-        EnsureFloatBuffer(ref _basePctBuf, startColW != null ? startColW.Length : 0);
-        if (startColW != null) System.Array.Copy(startColW, _basePctBuf, startColW.Length);
+        const float floor = 0.01f;
 
-        _basePctBuf[left] = Mathf.Clamp01(startColW[left] + deltaPct);
-        _basePctBuf[right] = Mathf.Clamp01(startColW[right] - deltaPct);
+        EnsureFloatBuffer(ref _basePctBuf, startColW.Length);
+        System.Array.Copy(startColW, _basePctBuf, startColW.Length);
 
-        float sum = 0f;
-        for (int i = 0; i < _basePctBuf.Length; i++) sum += _basePctBuf[i];
+        float l = Mathf.Clamp01(_basePctBuf[left]);
+        float r = Mathf.Clamp01(_basePctBuf[right]);
 
-        if (sum <= 0f)
-        {
-            float even = table.totalColumnsCountHighFive > 0 ? 1f / table.totalColumnsCountHighFive : 1f;
-            for (int i = 0; i < _basePctBuf.Length; i++) _basePctBuf[i] = even;
-        }
-        else
-        {
-            for (int i = 0; i < _basePctBuf.Length; i++) _basePctBuf[i] /= sum;
-        }
+        Ux_TonkersTableTopiaExtensions.RebalanceTwoPercentsLikeSeesaw(ref l, ref r, deltaPct, floor);
+
+        _basePctBuf[left] = l;
+        _basePctBuf[right] = r;
 
         for (int i = 0; i < table.totalColumnsCountHighFive; i++)
             table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
@@ -262,19 +260,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         EnsureRowStylesSize();
         int top = splitIndex;
         int bottom = splitIndex + 1;
-
         float availH = Mathf.Max(1f, _lastInnerHeight - table.sociallyDistancedRowsPixels * Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 1));
         float deltaPct = deltaContent / availH;
-
         EnsureFloatBuffer(ref _basePctBuf, startRowH != null ? startRowH.Length : 0);
         if (startRowH != null) System.Array.Copy(startRowH, _basePctBuf, startRowH.Length);
 
-        _basePctBuf[top] = Mathf.Clamp01(startRowH[top] + deltaPct);
-        _basePctBuf[bottom] = Mathf.Clamp01(startRowH[bottom] - deltaPct);
+        const float floor = 0.01f;
+        _basePctBuf[top] = Mathf.Clamp(startRowH[top] + deltaPct, floor, 1f - floor);
+        _basePctBuf[bottom] = Mathf.Clamp(startRowH[bottom] - deltaPct, floor, 1f - floor);
 
         float sum = 0f;
         for (int i = 0; i < _basePctBuf.Length; i++) sum += _basePctBuf[i];
-
         if (sum <= 0f)
         {
             float even = table.totalRowsCountLetTheShowBegin > 0 ? 1f / table.totalRowsCountLetTheShowBegin : 1f;
@@ -287,6 +283,38 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
         for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++)
             table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
+
+        EditorUtility.SetDirty(table);
+    }
+
+    private void ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (table == null) return;
+        if (!HasSelection()) return;
+
+        Undo.RecordObject(table, "Align Selection Horizontal");
+        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
+        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+
+        for (int r = r0; r <= r1; r++)
+            for (int c = c0; c <= c1; c++)
+                table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, h);
+
+        EditorUtility.SetDirty(table);
+    }
+
+    private void ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (table == null) return;
+        if (!HasSelection()) return;
+
+        Undo.RecordObject(table, "Align Selection Vertical");
+        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
+        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+
+        for (int r = r0; r <= r1; r++)
+            for (int c = c0; c <= c1; c++)
+                table.AlignCellVerticalOnlyLikeLaserLevel(r, c, v);
 
         EditorUtility.SetDirty(table);
     }
@@ -695,6 +723,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         bool isResizing = dragCol >= 0 || dragRow >= 0;
         var e = Event.current;
+
         bool hasRect = HasRectSelection();
         int selR0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
         int selC0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
@@ -740,7 +769,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 _snackTypesScratch.Clear();
                 table.ScoutUiSnacksInCellLikeAHawk(r, c, _snackTypesScratch, true);
                 BuildCellBadgeGuiLikeScoutPatches(_snackTypesScratch, hasChildTable, _badgesScratch);
-                if (_badgesScratch.Count > 0) DrawCellBadgesLikeFlair(cellRect, _badgesScratch);
+                if (_badgesScratch.Count > 0) DrawCellBadgesLikeFlair(cellRect, _badgesScratch, r, c);
                 _badgesScratch.Clear();
 
                 if (!isResizing && e.type == EventType.MouseDown && e.button == 0 && cellRect.Contains(e.mousePosition))
@@ -749,7 +778,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     if (!hoveringResizeHandle)
                     {
                         bool isMoveMode = actionMode == EditorActionMode.MoveCells;
-
                         if (e.clickCount == 2 && hasChildTable && childTbl != null)
                         {
                             Selection.activeObject = childTbl;
@@ -769,11 +797,15 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         {
                             if (e.shift && selRow >= 0 && selCol >= 0)
                             {
-                                selRow2 = r; selCol2 = c;
+                                selRow2 = r;
+                                selCol2 = c;
                             }
                             else
                             {
-                                selRow = r; selCol = c; selRow2 = r; selCol2 = c;
+                                selRow = r;
+                                selCol = c;
+                                selRow2 = r;
+                                selCol2 = c;
                             }
                             headerRowBigEnchilada = -1;
                             headerColBigEnchilada = -1;
@@ -787,7 +819,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                                     EditorGUIUtility.PingObject(cell);
                                 }
                             }
-
                             e.Use();
                             Repaint();
                             RepaintSceneViewLikeABobRoss();
@@ -799,7 +830,9 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 if (!overHandle && cellRect.Contains(e.mousePosition) && ((e.type == EventType.MouseDown && e.button == 1) || e.type == EventType.ContextClick))
                 {
                     Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForCell(
-                        table, r, c, spanR, spanC, canMerge, canUnmerge, selR0, selC0, selRCount, selCCount);
+                        table, r, c, spanR, spanC,
+                        canMerge, canUnmerge,
+                        selR0, selC0, selRCount, selCCount);
                     e.Use();
                     Repaint();
                 }
@@ -907,8 +940,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         float x = grid.x;
         for (int c = 0; c < table.totalColumnsCountHighFive - 1; c++)
         {
-            x += colW[c];
-            var handle = new Rect(x - grab * 0.5f + c * table.sociallyDistancedColumnsPixels, grid.y, grab, grid.height);
+            float splitX = x + colW[c] + table.sociallyDistancedColumnsPixels * 0.5f;
+            var handle = new Rect(splitX - grab * 0.5f, grid.y, grab, grid.height);
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeHorizontal);
 
             if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
@@ -916,6 +949,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 dragCol = c;
                 dragStartMouse = e.mousePosition.x;
                 table.ConvertAllSpecsToPercentages();
+                table.NormalizeWardrobePercentsToOneDadBod();
                 FillCurrentColumnPercentages();
                 EnsureFloatBuffer(ref startColW, _colPctBuf.Length);
                 System.Array.Copy(_colPctBuf, startColW, _colPctBuf.Length);
@@ -932,14 +966,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            x += table.sociallyDistancedColumnsPixels;
+            x += colW[c] + table.sociallyDistancedColumnsPixels;
         }
 
         float y = grid.y;
         for (int r = 0; r < table.totalRowsCountLetTheShowBegin - 1; r++)
         {
-            y += rowH[r];
-            var handle = new Rect(grid.x, y - grab * 0.5f + r * table.sociallyDistancedRowsPixels, grid.width, grab);
+            float splitY = y + rowH[r] + table.sociallyDistancedRowsPixels * 0.5f;
+            var handle = new Rect(grid.x, splitY - grab * 0.5f, grid.width, grab);
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeVertical);
 
             if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
@@ -947,6 +981,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 dragRow = r;
                 dragStartMouse = e.mousePosition.y;
                 table.ConvertAllSpecsToPercentages();
+                table.NormalizeWardrobePercentsToOneDadBod();
                 FillCurrentRowPercentages();
                 EnsureFloatBuffer(ref startRowH, _rowPctBuf.Length);
                 System.Array.Copy(_rowPctBuf, startRowH, _rowPctBuf.Length);
@@ -963,7 +998,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            y += table.sociallyDistancedRowsPixels;
+            y += rowH[r] + table.sociallyDistancedRowsPixels;
         }
     }
 
@@ -1024,15 +1059,110 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         }
     }
 
+    // Ux_TonkersTableTopiaLayoutEditor
     private void DrawSelectionSectionLikeDessert()
     {
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUILayout.Label("Selection", GUILayout.Width(70));
             var clipStyle = new GUIStyle(EditorStyles.miniLabel) { clipping = TextClipping.Clip, wordWrap = false, alignment = TextAnchor.MiddleLeft };
-            EditorGUILayout.LabelField(SelectionLabel(), clipStyle, GUILayout.ExpandWidth(true));
-            if (GUILayout.Button("Select", GUILayout.Width(70))) SelectActiveCellInHierarchy();
-            if (GUILayout.Button("Ping", GUILayout.Width(60))) PingActiveCell();
+            string selText = SelectionLabel();
+            EditorGUILayout.LabelField(selText, clipStyle, GUILayout.ExpandWidth(true), GUILayout.MinWidth(1));
+            GUILayout.FlexibleSpace();
+            float w2 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 70f, 110f);
+            if (GUILayout.Button("Select", GUILayout.Width(w2))) SelectActiveCellInHierarchy();
+            if (GUILayout.Button("Ping", GUILayout.Width(w2))) PingActiveCell();
+        }
+
+        if (!HasSelection() || table == null) return;
+
+        bool singleCell = selRow == selRow2 && selCol == selCol2 && headerColBigEnchilada < 0 && headerRowBigEnchilada < 0;
+
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+        {
+            GUILayout.Label("Align", GUILayout.Width(50));
+            int r0 = Mathf.Min(selRow, selRow2);
+            int r1 = Mathf.Max(selRow, selRow2);
+            int c0 = Mathf.Min(selCol, selCol2);
+            int c1 = Mathf.Max(selCol, selCol2);
+
+            bool leftOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            bool centerOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            bool rightOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+            bool topOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            bool middleOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            bool bottomOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+            bool fullOn = table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
+
+            float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
+
+            EditorGUI.BeginDisabledGroup(leftOn);
+            if (GUILayout.Button("Left", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(centerOn);
+            if (GUILayout.Button("Center", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(rightOn);
+            if (GUILayout.Button("Right", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(topOn);
+            if (GUILayout.Button("Top", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(middleOn);
+            if (GUILayout.Button("Middle", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(bottomOn);
+            if (GUILayout.Button("Bottom", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(fullOn);
+            if (GUILayout.Button("Full", GUILayout.Width(w7))) { ApplyFullAlignmentToSelectionLikeFittedSheet(); Repaint(); }
+            EditorGUI.EndDisabledGroup();
+        }
+
+        if (!singleCell) return;
+
+        var rt = table.FetchCellRectTransformVIP(selRow, selCol);
+        if (rt == null) return;
+
+        var kids = new List<Transform>(16);
+        rt.ListForeignKidsLikeRollCall(kids);
+
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Contents", EditorStyles.boldLabel);
+            if (kids.Count == 0)
+            {
+                EditorGUILayout.LabelField("None", EditorStyles.miniLabel);
+            }
+            else
+            {
+                for (int i = 0; i < kids.Count; i++)
+                {
+                    var t = kids[i];
+                    if (t == null) continue;
+                    var nice = Ux_TonkersTableTopiaExtensions.TypeNameShortLikeNameTag(Ux_TonkersTableTopiaExtensions.PickPrimaryUiTypeLikeMenuDecider(t.gameObject));
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField($"{i + 1}. {t.gameObject.name} ({nice})");
+                        if (GUILayout.Button("Select", GUILayout.Width(60))) t.SelectAndPingLikeABeacon();
+                        if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                        {
+                            Undo.RecordObject(table, "Delete Cell Child");
+                            if (!Application.isPlaying) Undo.DestroyObjectImmediate(t.gameObject);
+                            else Destroy(t.gameObject);
+                            table.FlagLayoutAsNeedingSpaDay();
+                            EditorUtility.SetDirty(table);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1043,18 +1173,20 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUI.enabled = HasSelection();
-                if (GUILayout.Button("Insert Row Above")) InsertRowAbove();
-                if (GUILayout.Button("Insert Row Below")) InsertRowBelow();
-                if (GUILayout.Button("Insert Col Left")) InsertColLeft();
-                if (GUILayout.Button("Insert Col Right")) InsertColRight();
+                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(4, 0f, 140f);
+                if (GUILayout.Button("Insert Row Above", GUILayout.Width(w))) InsertRowAbove();
+                if (GUILayout.Button("Insert Row Below", GUILayout.Width(w))) InsertRowBelow();
+                if (GUILayout.Button("Insert Col Left", GUILayout.Width(w))) InsertColLeft();
+                if (GUILayout.Button("Insert Col Right", GUILayout.Width(w))) InsertColRight();
                 GUI.enabled = true;
             }
 
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUI.enabled = HasSelection();
-                if (GUILayout.Button("Delete Row")) DeleteRow();
-                if (GUILayout.Button("Delete Col")) DeleteCol();
+                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 0f, 160f);
+                if (GUILayout.Button("Delete Row", GUILayout.Width(w))) DeleteRow();
+                if (GUILayout.Button("Delete Col", GUILayout.Width(w))) DeleteCol();
                 GUI.enabled = true;
             }
 
@@ -1065,23 +1197,78 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 int c0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
                 int rCount = hasRect ? Mathf.Abs(selRow2 - selRow) + 1 : 1;
                 int cCount = hasRect ? Mathf.Abs(selCol2 - selCol) + 1 : 1;
+
                 bool canMerge = hasRect && table != null && table.CanMergeThisPicnicBlanket(r0, c0, rCount, cCount);
                 bool canUnmerge = hasRect && table != null && table.CanUnmergeThisFoodFight(r0, c0, rCount, cCount);
 
+                float w4 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(4, 0f, 160f);
+
                 GUI.enabled = canMerge;
-                if (GUILayout.Button("Merge")) MergeSelection();
+                if (GUILayout.Button("Merge", GUILayout.Width(w4))) MergeSelection();
                 GUI.enabled = canUnmerge;
-                if (GUILayout.Button("Unmerge")) UnmergeTopLeft();
+                if (GUILayout.Button("Unmerge", GUILayout.Width(w4))) UnmergeTopLeft();
                 GUI.enabled = true;
 
-                if (GUILayout.Button("Distribute Columns")) DistributeColumnsNow();
-                if (GUILayout.Button("Distribute Rows")) DistributeRowsNow();
+                if (GUILayout.Button("Distribute Columns", GUILayout.Width(w4))) DistributeColumnsNow();
+                if (GUILayout.Button("Distribute Rows", GUILayout.Width(w4))) DistributeRowsNow();
             }
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Make Last Column Flexible")) { MakeLastColumnFlexyButHouseTrained(); }
-                if (GUILayout.Button("Make Last Row Flexible")) { MakeLastRowFlexyButHouseTrained(); }
+                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 0f, 200f);
+                if (GUILayout.Button("Make Last Column Flexible", GUILayout.Width(w))) { MakeLastColumnFlexyButHouseTrained(); }
+                if (GUILayout.Button("Make Last Row Flexible", GUILayout.Width(w))) { MakeLastRowFlexyButHouseTrained(); }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUI.enabled = HasSelection();
+                GUILayout.Label("Align", GUILayout.Width(50));
+
+                int r0 = Mathf.Min(selRow, selRow2);
+                int r1 = Mathf.Max(selRow, selRow2);
+                int c0 = Mathf.Min(selCol, selCol2);
+                int c1 = Mathf.Max(selCol, selCol2);
+
+                bool leftOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+                bool centerOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+                bool rightOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+                bool topOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+                bool middleOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                bool bottomOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+                bool fullOn = table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
+
+                float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
+
+                EditorGUI.BeginDisabledGroup(leftOn);
+                if (GUILayout.Button("Left", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(centerOn);
+                if (GUILayout.Button("Center", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(rightOn);
+                if (GUILayout.Button("Right", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(topOn);
+                if (GUILayout.Button("Top", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(middleOn);
+                if (GUILayout.Button("Middle", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(bottomOn);
+                if (GUILayout.Button("Bottom", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(fullOn);
+                if (GUILayout.Button("Full", GUILayout.Width(w7))) ApplyFullAlignmentToSelectionLikeFittedSheet();
+                EditorGUI.EndDisabledGroup();
+
+                GUI.enabled = true;
             }
         }
     }
@@ -1555,19 +1742,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         float x = grid.x;
         for (int c = 0; c < table.totalColumnsCountHighFive - 1; c++)
         {
-            x += colW[c];
-            var handle = new Rect(x - grab * 0.5f + c * table.sociallyDistancedColumnsPixels, grid.y, grab, grid.height);
+            float splitX = x + colW[c] + table.sociallyDistancedColumnsPixels * 0.5f;
+            var handle = new Rect(splitX - grab * 0.5f, grid.y, grab, grid.height);
             if (handle.Contains(e.mousePosition)) return true;
-            x += table.sociallyDistancedColumnsPixels;
+            x += colW[c] + table.sociallyDistancedColumnsPixels;
         }
 
         float y = grid.y;
         for (int r = 0; r < table.totalRowsCountLetTheShowBegin - 1; r++)
         {
-            y += rowH[r];
-            var handle = new Rect(grid.x, y - grab * 0.5f + r * table.sociallyDistancedRowsPixels, grid.width, grab);
+            float splitY = y + rowH[r] + table.sociallyDistancedRowsPixels * 0.5f;
+            var handle = new Rect(grid.x, splitY - grab * 0.5f, grid.width, grab);
             if (handle.Contains(e.mousePosition)) return true;
-            y += table.sociallyDistancedRowsPixels;
+            y += rowH[r] + table.sociallyDistancedRowsPixels;
         }
 
         return false;
@@ -1618,16 +1805,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private void ResizeColWithMouse(Rect grid)
     {
-        if (dragCol < 0 || startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
+        if (dragCol < 0) return;
+        if (startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
 
         float dxPx = Event.current.mousePosition.x - dragStartMouse;
 
         float naturalW = ComputeNaturalGridWidthLikeTapeMeasure();
-        float scaleXLikeBinoculars = (_lastGridRect.width > 0f) ? (_lastGridRect.width / naturalW) : 1f;
+        float scaleXLikePeriscope = (grid.width > 0f && naturalW > 0f) ? (grid.width / naturalW) : 1f;
+        if (Mathf.Abs(scaleXLikePeriscope) < 0.0001f) scaleXLikePeriscope = 1f;
 
-        float deltaContent = dxPx / Mathf.Max(0.0001f, scaleXLikeBinoculars);
+        float deltaContent = dxPx / scaleXLikePeriscope;
 
         ApplyColResize(dragCol, deltaContent);
+
         table.FlagLayoutAsNeedingSpaDay();
         Repaint();
     }
@@ -1756,26 +1946,31 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         return "?";
     }
 
-    private void DrawCellBadgesLikeFlair(Rect cellRect, List<GUIContent> badges)
+    private void DrawCellBadgesLikeFlair(Rect cellRect, List<GUIContent> badges, int r, int c)
     {
         const float size = 12f;
         const float pad = 2f;
-        float x = cellRect.xMax - pad - size;
-        float y = cellRect.yMin + pad;
+        const float gap = 1f;
+
+        bool isFull;
+        var anchor = table != null ? table.GuessCellForeignersAnchorLikeDart(r, c, out isFull) : new Vector2(0.5f, 0.5f);
+
+        float clusterW = badges.Count * (size + gap) - gap;
+        float anchorX = Mathf.Lerp(cellRect.xMin + pad, cellRect.xMax - pad, Mathf.Clamp01(anchor.x));
+        float topY = cellRect.yMin + pad;
+        float botY = cellRect.yMax - pad - size;
+        float anchorY = Mathf.Lerp(botY, topY, Mathf.Clamp01(anchor.y));
+
+        float xStart = Mathf.Clamp(anchorX - clusterW * 0.5f, cellRect.xMin + pad, cellRect.xMax - pad - clusterW);
+        float yStart = Mathf.Clamp(anchorY - size * 0.5f, cellRect.yMin + pad, cellRect.yMax - pad - size);
 
         for (int i = 0; i < badges.Count; i++)
         {
-            var r = new Rect(x - i * (size + 1f), y, size, size);
-            EditorGUI.DrawRect(r, new Color(0.2f, 0.6f, 1f, 0.25f));
+            var rct = new Rect(xStart + i * (size + gap), yStart, size, size);
+            EditorGUI.DrawRect(rct, new Color(0.2f, 0.6f, 1f, 0.25f));
             var b = badges[i];
-            if (b.image != null)
-            {
-                GUI.DrawTexture(r, b.image, ScaleMode.ScaleToFit, true);
-            }
-            else
-            {
-                GUI.Label(r, b, MiniBoldCenter);
-            }
+            if (b.image != null) GUI.DrawTexture(rct, b.image, ScaleMode.ScaleToFit, true);
+            else GUI.Label(rct, b, MiniBoldCenter);
         }
     }
 
@@ -1946,5 +2141,18 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         for (int r = 0; r < rows; r++) natH += _previewRowBuf[r];
         if (rows > 1) natH += table.sociallyDistancedRowsPixels * (rows - 1);
         return Mathf.Max(1f, natH);
+    }
+
+    private void ApplyFullAlignmentToSelectionLikeFittedSheet()
+    {
+        if (table == null) return;
+        if (!HasSelection()) return;
+        Undo.RecordObject(table, "Align Selection Full");
+        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
+        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+        for (int r = r0; r <= r1; r++)
+            for (int c = c0; c <= c1; c++)
+                table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
+        EditorUtility.SetDirty(table);
     }
 }

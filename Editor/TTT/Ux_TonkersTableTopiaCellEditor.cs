@@ -19,14 +19,12 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
     {
         var cell = _cell != null ? _cell : (_cell = (Ux_TonkersTableTopiaCell)target);
         var table = _cachedTable != null ? _cachedTable : (_cachedTable = cell ? cell.GetComponentInParent<Ux_TonkersTableTopiaLayout>(true) : null);
-
         using (new EditorGUILayout.HorizontalScope())
         {
             GUI.enabled = table != null;
             if (GUILayout.Button(GC_BackToTable, GUILayout.Height(22))) Selection.activeObject = table;
             GUI.enabled = true;
         }
-
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUI.enabled = table != null;
@@ -51,14 +49,126 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             }
             GUI.enabled = true;
         }
-
         serializedObject.Update();
-
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField($"Row: {cell.rowNumberWhereThePartyIs}", GUILayout.Width(80));
             EditorGUILayout.LabelField($"Col: {cell.columnNumberPrimeRib}", GUILayout.Width(80));
             GUILayout.FlexibleSpace();
+        }
+        using (new EditorGUILayout.HorizontalScope())
+        {
+            GUILayout.Label("Align", GUILayout.Width(50));
+
+            // --- FIX: pre-initialize the out vars so they're definitely assigned ---
+            bool isFull = false;
+            Ux_TonkersTableTopiaLayout.HorizontalAlignment hCur = Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center;
+            Ux_TonkersTableTopiaLayout.VerticalAlignment vCur = Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+            bool hasState = table != null &&
+                            table.TryDetectCellAlignmentLikeLieDetector(
+                                cell.rowNumberWhereThePartyIs,
+                                cell.columnNumberPrimeRib,
+                                out isFull, out hCur, out vCur);
+            // ----------------------------------------------------------------------
+
+            bool leftOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+            bool centerOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+            bool rightOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+            bool topOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Top;
+            bool middleOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+            bool bottomOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom;
+            bool fullOn = hasState && isFull;
+
+            EditorGUI.BeginDisabledGroup(leftOn);
+            if (GUILayout.Button("Left"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Left");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(centerOn);
+            if (GUILayout.Button("Center"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Center");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(rightOn);
+            if (GUILayout.Button("Right"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Right");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(topOn);
+            if (GUILayout.Button("Top"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Top");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(middleOn);
+            if (GUILayout.Button("Middle"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Middle");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(bottomOn);
+            if (GUILayout.Button("Bottom"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Bottom");
+                    table.AlignCellForeignsLikeLaserLevel(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUI.BeginDisabledGroup(fullOn);
+            if (GUILayout.Button("Full"))
+            {
+                if (table)
+                {
+                    Undo.RecordObject(table, "Align Cell Full");
+                    table.AlignCellForeignsToFillLikeStuffedBurrito(cell.rowNumberWhereThePartyIs, cell.columnNumberPrimeRib);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+            }
+            EditorGUI.EndDisabledGroup();
         }
 
         EditorGUI.BeginChangeCheck();
@@ -108,7 +218,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                     EditorUtility.SetDirty(table);
                 }
             }
-
             if (cell.backgroundPictureBecausePlainIsLame != null)
             {
                 EditorGUI.BeginChangeCheck();
@@ -143,7 +252,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         var row = table.snazzyRowWardrobes[rIdx];
 
         EditorGUILayout.Space(8);
-
         bool showCol = EditorPrefs.GetBool("TTT_Cell_ShowCol", true);
         showCol = EditorGUILayout.Foldout(showCol, $"Column {cIdx + 1}");
         EditorPrefs.SetBool("TTT_Cell_ShowCol", showCol);
@@ -153,7 +261,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             EditorGUI.BeginChangeCheck();
             manualCols = EditorGUILayout.Toggle("Fixed Widths", manualCols);
             EditorPrefs.SetBool("TTT_ManualCols", manualCols);
-
             if (manualCols)
             {
                 float px = Mathf.Max(0f, col.requestedWidthMaybePercentIfNegative > 0f ? col.requestedWidthMaybePercentIfNegative : 0f);
@@ -166,7 +273,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 pct = Mathf.Clamp(EditorGUILayout.Slider("Width %", pct, 0f, 100f), 0f, 100f);
                 col.requestedWidthMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
             }
-
             bool colImgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
             bool newColImgToggle = EditorGUILayout.ToggleLeft("Image Settings", colImgToggle);
             if (newColImgToggle != colImgToggle) EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newColImgToggle);
@@ -178,7 +284,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                     col.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", col.backdropTintFlavor);
                 }
             }
-
             col.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", col.customAnchorsAndPivotBecauseWeFancy);
             if (col.customAnchorsAndPivotBecauseWeFancy)
             {
@@ -186,7 +291,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 col.customAnchorMaxPointy = EditorGUILayout.Vector2Field("Anchor Max", col.customAnchorMaxPointy);
                 col.customPivotSpinny = EditorGUILayout.Vector2Field("Pivot", col.customPivotSpinny);
             }
-
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Column Style");
@@ -198,7 +302,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         }
 
         EditorGUILayout.Space(6);
-
         bool showRow = EditorPrefs.GetBool("TTT_Cell_ShowRow", true);
         showRow = EditorGUILayout.Foldout(showRow, $"Row {rIdx + 1}");
         EditorPrefs.SetBool("TTT_Cell_ShowRow", showRow);
@@ -208,7 +311,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             EditorGUI.BeginChangeCheck();
             manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
             EditorPrefs.SetBool("TTT_ManualRows", manualRows);
-
             if (manualRows)
             {
                 float px = Mathf.Max(0f, row.requestedHeightMaybePercentIfNegative > 0f ? row.requestedHeightMaybePercentIfNegative : 0f);
@@ -221,7 +323,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 pct = Mathf.Clamp(EditorGUILayout.Slider("Height %", pct, 0f, 100f), 0f, 100f);
                 row.requestedHeightMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
             }
-
             bool rowImgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
             bool newRowImgToggle = EditorGUILayout.ToggleLeft("Image Settings", rowImgToggle);
             if (newRowImgToggle != rowImgToggle) EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newRowImgToggle);
@@ -233,7 +334,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                     row.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", row.backdropTintFlavor);
                 }
             }
-
             row.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", row.customAnchorsAndPivotBecauseWeFancy);
             if (row.customAnchorsAndPivotBecauseWeFancy)
             {
@@ -241,7 +341,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 row.customAnchorMaxPointy = EditorGUILayout.Vector2Field("Anchor Max", row.customAnchorMaxPointy);
                 row.customPivotSpinny = EditorGUILayout.Vector2Field("Pivot", row.customPivotSpinny);
             }
-
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Row Style");
@@ -251,7 +350,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                 EditorUtility.SetDirty(table);
             }
         }
-
         serializedObject.ApplyModifiedProperties();
     }
 

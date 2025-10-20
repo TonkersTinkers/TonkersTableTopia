@@ -61,6 +61,90 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
         {
             EditorGUILayout.LabelField($"Row {rIdx + 1}", EditorStyles.boldLabel);
 
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Align", GUILayout.Width(50));
+                bool leftOn = table.IsRowHorizAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+                bool centerOn = table.IsRowHorizAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+                bool rightOn = table.IsRowHorizAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+                bool topOn = table.IsRowVertAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+                bool middleOn = table.IsRowVertAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                bool bottomOn = table.IsRowVertAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+                bool fullOn = table.IsRowFullLikeWaterbed(rIdx);
+
+                float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
+
+                EditorGUI.BeginDisabledGroup(leftOn);
+                if (GUILayout.Button("Left", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Left");
+                    table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(centerOn);
+                if (GUILayout.Button("Center", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Center");
+                    table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(rightOn);
+                if (GUILayout.Button("Right", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Right");
+                    table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(topOn);
+                if (GUILayout.Button("Top", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Top");
+                    table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(middleOn);
+                if (GUILayout.Button("Middle", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Middle");
+                    table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(bottomOn);
+                if (GUILayout.Button("Bottom", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Bottom");
+                    table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(fullOn);
+                if (GUILayout.Button("Full", GUILayout.Width(w7)))
+                {
+                    Undo.RecordObject(table, "Align Row Full");
+                    table.AlignRowToFillLikeWaterbed(rIdx);
+                    EditorUtility.SetDirty(table);
+                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                }
+                EditorGUI.EndDisabledGroup();
+            }
+
             bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
             EditorGUI.BeginChangeCheck();
             manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
@@ -81,7 +165,6 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
 
             rs.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", rs.backdropPictureOnTheHouse, typeof(Sprite), false);
             rs.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", rs.backdropTintFlavor);
-
             rs.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", rs.customAnchorsAndPivotBecauseWeFancy);
             if (rs.customAnchorsAndPivotBecauseWeFancy)
             {

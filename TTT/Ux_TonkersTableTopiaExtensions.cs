@@ -3,7 +3,15 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 
 public static class Ux_TonkersTableTopiaExtensions
+
 {
+    private static readonly List<Ux_TonkersTableTopiaLayout> _childTableScratch = new List<Ux_TonkersTableTopiaLayout>(8);
+    private static readonly Dictionary<RectTransform, Vector2> _dadBodParentMemo = new Dictionary<RectTransform, Vector2>();
+    private static readonly Dictionary<int, LayoutStateDadDiary> _layoutStateDadDiary = new Dictionary<int, LayoutStateDadDiary>();
+    private static float[] _dlacFixed;
+    private static float[] _dlacPerc;
+    private static int[] _dlacFlex;
+
 #if UNITY_EDITOR
 
     public static void SelectAndPingLikeABeacon(this Object target)
@@ -14,8 +22,6 @@ public static class Ux_TonkersTableTopiaExtensions
     }
 
 #endif
-
-    private static readonly Dictionary<RectTransform, Vector2> _dadBodParentMemo = new Dictionary<RectTransform, Vector2>();
 
     public static bool BulkDeleteColumnsLikeAChamp(this Ux_TonkersTableTopiaLayout t, int startColInclusive, int endColInclusive)
     {
@@ -57,6 +63,22 @@ public static class Ux_TonkersTableTopiaExtensions
         for (int r = r1; r >= r0; r--) if (!t.TryPolitelyDeleteRow(r)) return false;
         t.FlagLayoutAsNeedingSpaDay();
         return true;
+    }
+
+    public static float CalcShrinkyDinkWidthLikeDietCoke(int buttonCount, float min = 44f, float max = 120f, float gap = 4f, float padding = 32f)
+    {
+        if (buttonCount < 1) return min;
+        float avail = Mathf.Max(1f, UnityEditor.EditorGUIUtility.currentViewWidth - padding);
+        float w = (avail - gap * Mathf.Max(0, buttonCount - 1)) / buttonCount;
+        return Mathf.Clamp(w, min, max);
+    }
+
+    public static float CalcShrinkyDinkWidthLikeDietCokeSquisher(int buttonCount, float occupiedWidth, float max = 160f, float gap = 4f, float padding = 32f)
+    {
+        if (buttonCount < 1) return 1f;
+        float avail = Mathf.Max(1f, UnityEditor.EditorGUIUtility.currentViewWidth - padding - Mathf.Max(0f, occupiedWidth));
+        float w = (avail - gap * Mathf.Max(0, buttonCount - 1)) / buttonCount;
+        return Mathf.Clamp(w, 1f, max);
     }
 
     public static bool CanMergeThisPicnicBlanket(this Ux_TonkersTableTopiaLayout t, int startRow, int startCol, int rowCount, int colCount)
@@ -194,15 +216,33 @@ public static class Ux_TonkersTableTopiaExtensions
         });
     }
 
-    private static float[] _dlacFixed;
-    private static float[] _dlacPerc;
-    private static int[] _dlacFlex;
-
     private static void EnsureCatererCapacity(int count)
     {
         if (_dlacFixed == null || _dlacFixed.Length < count) System.Array.Resize(ref _dlacFixed, count);
         if (_dlacPerc == null || _dlacPerc.Length < count) System.Array.Resize(ref _dlacPerc, count);
         if (_dlacFlex == null || _dlacFlex.Length < count) System.Array.Resize(ref _dlacFlex, count);
+    }
+
+    private static void EnsureReasonableSizeLikeDadPun(RectTransform rt, RectTransform parent)
+    {
+        if (rt == null || parent == null) return;
+
+        if (Mathf.Abs(rt.anchorMin.x - 0f) < 0.0001f && Mathf.Abs(rt.anchorMin.y - 0f) < 0.0001f &&
+            Mathf.Abs(rt.anchorMax.x - 1f) < 0.0001f && Mathf.Abs(rt.anchorMax.y - 1f) < 0.0001f)
+        {
+            return;
+        }
+
+        FindPreferredSizeLikeGoldilocks(rt, out float prefW, out float prefH);
+
+        float maxW = Mathf.Max(1f, parent.rect.width);
+        float maxH = Mathf.Max(1f, parent.rect.height);
+
+        float w = Mathf.Clamp(prefW, 1f, maxW);
+        float h = Mathf.Clamp(prefH, 1f, maxH);
+
+        rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
+        rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h);
     }
 
     public static void DistributeLikeACatererInto(int count, System.Func<int, float> getSpec, float spacing, float inner, ref float[] result)
@@ -613,6 +653,46 @@ public static class Ux_TonkersTableTopiaExtensions
         t.FlagLayoutAsNeedingSpaDay();
     }
 
+    public static bool TryDetectCellAlignmentLikeLieDetector(this Ux_TonkersTableTopiaLayout t, int row, int col, out bool isFullLikeBurrito, out Ux_TonkersTableTopiaLayout.HorizontalAlignment h, out Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        isFullLikeBurrito = false;
+        h = Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center;
+        v = Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
+        if (t == null) return false;
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return false;
+        RectTransform child = null;
+        for (int i = 0; i < rt.childCount; i++)
+        {
+            var ch = rt.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+            child = ch;
+            break;
+        }
+        if (child == null) return false;
+        bool full = Mathf.Abs(child.anchorMin.x - 0f) < 0.0001f && Mathf.Abs(child.anchorMin.y - 0f) < 0.0001f && Mathf.Abs(child.anchorMax.x - 1f) < 0.0001f && Mathf.Abs(child.anchorMax.y - 1f) < 0.0001f;
+        if (full)
+        {
+            isFullLikeBurrito = true;
+            return true;
+        }
+        Vector2 p;
+        if (Mathf.Abs(child.anchorMin.x - child.anchorMax.x) < 0.0001f && Mathf.Abs(child.anchorMin.y - child.anchorMax.y) < 0.0001f)
+        {
+            p = child.anchorMin;
+        }
+        else
+        {
+            p = (child.anchorMin + child.anchorMax) * 0.5f;
+        }
+        h = p.x < 0.3334f ? Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left : (p.x > 0.6666f ? Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right : Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+        v = p.y < 0.3334f ? Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom : (p.y > 0.6666f ? Ux_TonkersTableTopiaLayout.VerticalAlignment.Top : Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+        return true;
+    }
+
     public static bool TryPeekMainCourseLikeABuffet(this Ux_TonkersTableTopiaLayout t, int row, int col, out int mainRow, out int mainCol, out Ux_TonkersTableTopiaCell mainCell)
     {
         mainRow = row;
@@ -656,6 +736,34 @@ public static class Ux_TonkersTableTopiaExtensions
         return Vector2.zero;
     }
 
+    public static bool IsColumnAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int col, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        int c0 = Mathf.Clamp(col, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        return t.IsSelectionAlreadyAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), c0, c0, h, v);
+    }
+
+    public static bool IsColumnFullLikeWaterfall(this Ux_TonkersTableTopiaLayout t, int col)
+    {
+        if (t == null) return false;
+        int c0 = Mathf.Clamp(col, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        return t.IsSelectionFullLikeBurritoWrap(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), c0, c0);
+    }
+
+    public static bool IsColumnHorizAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int col, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return false;
+        int c0 = Mathf.Clamp(col, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        return t.IsSelectionHorizAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), c0, c0, h);
+    }
+
+    public static bool IsColumnVertAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int col, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        int c0 = Mathf.Clamp(col, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        return t.IsSelectionVertAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), c0, c0, v);
+    }
+
     private static bool IsColumnDeletionBlockedByMergers(Ux_TonkersTableTopiaLayout t, int colIndex)
     {
         for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
@@ -669,6 +777,13 @@ public static class Ux_TonkersTableTopiaExtensions
         return false;
     }
 
+    public static bool IsRowAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int row, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        int r0 = Mathf.Clamp(row, 0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1));
+        return t.IsSelectionAlreadyAlignedLikeDejaVu(r0, r0, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), h, v);
+    }
+
     private static bool IsRowDeletionBlockedByMergers(Ux_TonkersTableTopiaLayout t, int rowIndex)
     {
         for (int c = 0; c < t.totalColumnsCountHighFive; c++)
@@ -680,6 +795,118 @@ public static class Ux_TonkersTableTopiaExtensions
             if (cell.howManyRowsAreHoggingThisSeat > 1 && rowIndex >= start && rowIndex <= end) return true;
         }
         return false;
+    }
+
+    public static bool IsRowFullLikeWaterbed(this Ux_TonkersTableTopiaLayout t, int row)
+    {
+        if (t == null) return false;
+        int r0 = Mathf.Clamp(row, 0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1));
+        return t.IsSelectionFullLikeBurritoWrap(r0, r0, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+    }
+
+    public static bool IsRowHorizAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int row, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return false;
+        int r0 = Mathf.Clamp(row, 0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1));
+        return t.IsSelectionHorizAlignedLikeDejaVu(r0, r0, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), h);
+    }
+
+    public static bool IsRowVertAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int row, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        int r0 = Mathf.Clamp(row, 0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1));
+        return t.IsSelectionVertAlignedLikeDejaVu(r0, r0, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), v);
+    }
+
+    public static bool IsSelectionAlreadyAlignedLikeDejaVu(this Ux_TonkersTableTopiaLayout t, int r0, int r1, int c0, int c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment wantH, Ux_TonkersTableTopiaLayout.VerticalAlignment wantV)
+    {
+        if (t == null) return false;
+        bool any = false;
+        for (int r = r0; r <= r1; r++)
+        {
+            for (int c = c0; c <= c1; c++)
+            {
+                if (!t.TryDetectCellAlignmentLikeLieDetector(r, c, out var isFull, out var h, out var v)) return false;
+                if (isFull) return false;
+                if (h != wantH || v != wantV) return false;
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    public static bool IsSelectionFullLikeBurritoWrap(this Ux_TonkersTableTopiaLayout t, int r0, int r1, int c0, int c1)
+    {
+        if (t == null) return false;
+        bool any = false;
+        for (int r = r0; r <= r1; r++)
+        {
+            for (int c = c0; c <= c1; c++)
+            {
+                if (!t.TryDetectCellAlignmentLikeLieDetector(r, c, out var isFull, out _, out _)) return false;
+                if (!isFull) return false;
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    public static bool IsSelectionHorizAlignedLikeDejaVu(this Ux_TonkersTableTopiaLayout t, int r0, int r1, int c0, int c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment wantH)
+    {
+        if (t == null) return false;
+        bool any = false;
+        for (int r = r0; r <= r1; r++)
+        {
+            for (int c = c0; c <= c1; c++)
+            {
+                if (!t.TryDetectCellAlignmentLikeLieDetector(r, c, out var isFull, out var h, out _)) return false;
+                if (isFull) return false;
+                if (h != wantH) return false;
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    public static bool IsSelectionVertAlignedLikeDejaVu(this Ux_TonkersTableTopiaLayout t, int r0, int r1, int c0, int c1, Ux_TonkersTableTopiaLayout.VerticalAlignment wantV)
+    {
+        if (t == null) return false;
+        bool any = false;
+        for (int r = r0; r <= r1; r++)
+        {
+            for (int c = c0; c <= c1; c++)
+            {
+                if (!t.TryDetectCellAlignmentLikeLieDetector(r, c, out var isFull, out _, out var v)) return false;
+                if (isFull) return false;
+                if (v != wantV) return false;
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    public static bool IsTableAlignedLikeChoir(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        return t.IsSelectionAlreadyAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), h, v);
+    }
+
+    public static bool IsTableFullLikeBalloon(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return false;
+        return t.IsSelectionFullLikeBurritoWrap(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+    }
+
+    public static bool IsTableHorizAlignedLikeChoir(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return false;
+        return t.IsSelectionHorizAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), h);
+    }
+
+    public static bool IsTableVertAlignedLikeChoir(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return false;
+        return t.IsSelectionVertAlignedLikeDejaVu(0, Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1), 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1), v);
     }
 
     private static bool NearlyVec2(Vector2 a, Vector2 b)
@@ -712,8 +939,6 @@ public static class Ux_TonkersTableTopiaExtensions
         public Vector2 lastTableSize = Vector2.zero;
         public bool pendingDeferral = false;
     }
-
-    private static readonly Dictionary<int, LayoutStateDadDiary> _layoutStateDadDiary = new Dictionary<int, LayoutStateDadDiary>();
 
     public static Vector2 GetCanvasScaleLikeDadBod(this Ux_TonkersTableTopiaLayout t)
     {
@@ -756,13 +981,6 @@ public static class Ux_TonkersTableTopiaExtensions
         t.StartCoroutine(WaitAFrameAndFlagSpaDayLikeABoomer(t, id));
     }
 
-    private static System.Collections.IEnumerator WaitAFrameAndFlagSpaDayLikeABoomer(Ux_TonkersTableTopiaLayout t, int id)
-    {
-        yield return null;
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        if (_layoutStateDadDiary.TryGetValue(id, out var state)) state.pendingDeferral = false;
-    }
-
     public static Image FlipImageComponentLikeALightSwitch(this RectTransform rt, bool needIt)
     {
         if (rt == null) return null;
@@ -784,6 +1002,29 @@ public static class Ux_TonkersTableTopiaExtensions
         return null;
     }
 
+    public static void RebalanceTwoPercentsLikeSeesaw(ref float leftPct, ref float rightPct, float deltaPct, float floor)
+    {
+        float sum = Mathf.Clamp01(leftPct + rightPct);
+        float minLeft = floor;
+        float maxLeft = Mathf.Max(floor, sum - floor);
+
+        float newLeft = Mathf.Clamp(leftPct + deltaPct, minLeft, maxLeft);
+        float newRight = sum - newLeft;
+
+        leftPct = newLeft;
+        rightPct = newRight;
+    }
+
+#if UNITY_EDITOR
+
+    public static void RequestWysiRepaintLikeFreshCoat()
+    {
+        UnityEditor.SceneView.RepaintAll();
+        UnityEditor.EditorApplication.QueuePlayerLoopUpdate();
+    }
+
+#endif
+
     public static Ux_TonkersTableTopiaLayout FindParentTableLikeFamilyTree(this Ux_TonkersTableTopiaLayout t)
     {
         if (t == null) return null;
@@ -795,7 +1036,51 @@ public static class Ux_TonkersTableTopiaExtensions
         return null;
     }
 
-    private static readonly List<Ux_TonkersTableTopiaLayout> _childTableScratch = new List<Ux_TonkersTableTopiaLayout>(8);
+    private static void FindPreferredSizeLikeGoldilocks(RectTransform rt, out float w, out float h)
+    {
+        w = 0f; h = 0f;
+        if (rt == null) { w = 32f; h = 32f; return; }
+
+        try
+        {
+            w = Mathf.Max(w, LayoutUtility.GetPreferredWidth(rt));
+            h = Mathf.Max(h, LayoutUtility.GetPreferredHeight(rt));
+        }
+        catch { }
+
+        var img = rt.GetComponent<Image>();
+        if (img != null)
+        {
+            if (img.sprite != null)
+            {
+                var sr = img.sprite.rect.size;
+                if (w < 1f) w = sr.x;
+                if (h < 1f) h = sr.y;
+            }
+            if (w < 1f) w = 64f;
+            if (h < 1f) h = 64f;
+            return;
+        }
+
+        var raw = rt.GetComponent<RawImage>();
+        if (raw != null && raw.texture != null)
+        {
+            w = w < 1f ? raw.texture.width : w;
+            h = h < 1f ? raw.texture.height : h;
+            return;
+        }
+
+        var txt = rt.GetComponent<Text>();
+        if (txt != null)
+        {
+            if (w < 1f) w = Mathf.Max(48f, txt.preferredWidth);
+            if (h < 1f) h = Mathf.Max(txt.fontSize + 6f, txt.preferredHeight);
+            return;
+        }
+
+        if (w < 1f) w = Mathf.Max(32f, rt.rect.width);
+        if (h < 1f) h = Mathf.Max(20f, rt.rect.height);
+    }
 
     public static Ux_TonkersTableTopiaLayout FindFirstChildTableLikeEasterEgg(this RectTransform parent, bool includeInactive = true)
     {
@@ -1100,4 +1385,473 @@ public static class Ux_TonkersTableTopiaExtensions
     typeof(ScrollRect),
     typeof(InputField)
     };
+
+    public static void ListForeignKidsLikeRollCall(this RectTransform parent, List<Transform> outList)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        if (parent == null) return;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var ch = parent.GetChild(i);
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+            outList.Add(ch);
+        }
+    }
+
+    public static void AlignCellForeignsLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int row, int col, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return;
+        rt.AlignForeignersInRectLikeEtiquette(h, v, true);
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    private static void ApplyRectSinglePointAnchorLikeEtiquette(RectTransform rt, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (rt == null) return;
+
+        float ax = h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? 0f : (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? 0.5f : 1f);
+        float ay = v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom ? 0f : (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle ? 0.5f : 1f);
+
+        var aMin = rt.anchorMin;
+        var aMax = rt.anchorMax;
+        aMin.x = ax; aMax.x = ax;
+        aMin.y = ay; aMax.y = ay;
+        rt.anchorMin = aMin;
+        rt.anchorMax = aMax;
+
+        var piv = rt.pivot;
+        piv.x = ax;
+        piv.y = ay;
+        rt.pivot = piv;
+
+        var pos = rt.anchoredPosition;
+        pos.x = 0f;
+        pos.y = 0f;
+        rt.anchoredPosition = pos;
+
+        EnsureReasonableSizeLikeDadPun(rt, rt.parent as RectTransform);
+    }
+
+    private static TextAnchor MapToTextAnchorDad(Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Top)
+        {
+            if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left) return TextAnchor.UpperLeft;
+            if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center) return TextAnchor.UpperCenter;
+            return TextAnchor.UpperRight;
+        }
+        if (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle)
+        {
+            if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left) return TextAnchor.MiddleLeft;
+            if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center) return TextAnchor.MiddleCenter;
+            return TextAnchor.MiddleRight;
+        }
+        if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left) return TextAnchor.LowerLeft;
+        if (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center) return TextAnchor.LowerCenter;
+        return TextAnchor.LowerRight;
+    }
+
+    public static GameObject CreateToggleFlipFlop(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT Toggle FlipFlop", x => { });
+        var bg = new GameObject("Background").AddComponent<Image>();
+        var ck = new GameObject("Checkmark").AddComponent<Image>();
+        var lbl = new GameObject("Label").AddComponent<Text>();
+        var rt = go.GetComponent<RectTransform>();
+        var bgRT = bg.GetComponent<RectTransform>(); bgRT.SetParent(rt, false); bgRT.anchorMin = new Vector2(0f, 0.5f); bgRT.anchorMax = new Vector2(0f, 0.5f); bgRT.sizeDelta = new Vector2(20, 20); bgRT.anchoredPosition = new Vector2(10, 0);
+        var ckRT = ck.GetComponent<RectTransform>(); ckRT.SetParent(bgRT, false); ckRT.anchorMin = Vector2.one * 0.5f; ckRT.anchorMax = Vector2.one * 0.5f; ckRT.sizeDelta = new Vector2(12, 12);
+        var lblRT = lbl.GetComponent<RectTransform>(); lblRT.SetParent(rt, false); lblRT.anchorMin = new Vector2(0f, 0.5f); lblRT.anchorMax = new Vector2(0f, 0.5f); lblRT.anchoredPosition = new Vector2(35, 0); lblRT.sizeDelta = new Vector2(160, 20);
+        lbl.text = "Toggle"; lbl.alignment = TextAnchor.MiddleLeft; lbl.raycastTarget = false;
+        var img = bg; img.color = Color.white;
+        var tog = go.AddComponent<Toggle>();
+        tog.graphic = ck;
+        tog.targetGraphic = img;
+        return go;
+    }
+
+    public static GameObject CreateSliderSlipNSlide(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT Slider SlipNSlide", x => { });
+        var rt = go.GetComponent<RectTransform>();
+        rt.StretchWidthHugHeightLikeYoga(); rt.sizeDelta = new Vector2(0, 20);
+        var bg = new GameObject("Background").AddComponent<Image>();
+        var fillArea = new GameObject("Fill Area").AddComponent<RectTransform>();
+        var fill = new GameObject("Fill").AddComponent<Image>();
+        var handleSlideArea = new GameObject("Handle Slide Area").AddComponent<RectTransform>();
+        var handle = new GameObject("Handle").AddComponent<Image>();
+        bg.rectTransform.SetParent(rt, false); bg.rectTransform.SnapCroutonToFillParentLikeGravy(); bg.raycastTarget = true;
+        fillArea.SetParent(rt, false); fillArea.anchorMin = new Vector2(0f, 0.25f); fillArea.anchorMax = new Vector2(1f, 0.75f); fillArea.offsetMin = new Vector2(10, 0); fillArea.offsetMax = new Vector2(-10, 0);
+        fill.rectTransform.SetParent(fillArea, false); fill.rectTransform.anchorMin = new Vector2(0f, 0.25f); fill.rectTransform.anchorMax = new Vector2(0.5f, 0.75f); fill.raycastTarget = false;
+        handleSlideArea.SetParent(rt, false); handleSlideArea.anchorMin = new Vector2(0f, 0f); handleSlideArea.anchorMax = new Vector2(1f, 1f); handleSlideArea.offsetMin = new Vector2(10, 0); handleSlideArea.offsetMax = new Vector2(-10, 0);
+        handle.rectTransform.SetParent(handleSlideArea, false); handle.rectTransform.anchorMin = new Vector2(0.5f, 0.5f); handle.rectTransform.anchorMax = new Vector2(0.5f, 0.5f); handle.rectTransform.sizeDelta = new Vector2(20, 20);
+        var s = go.AddComponent<Slider>();
+        s.fillRect = fill.rectTransform;
+        s.handleRect = handle.rectTransform;
+        s.direction = Slider.Direction.LeftToRight;
+        s.targetGraphic = handle;
+        return go;
+    }
+
+    public static GameObject CreateScrollbarScoot(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT Scrollbar Scoot", x => { });
+        var rt = go.GetComponent<RectTransform>(); rt.StretchWidthHugHeightLikeYoga(); rt.sizeDelta = new Vector2(0, 20);
+        var bg = new GameObject("Background").AddComponent<Image>(); bg.rectTransform.SetParent(rt, false); bg.rectTransform.SnapCroutonToFillParentLikeGravy();
+        var handle = new GameObject("Handle").AddComponent<Image>(); handle.rectTransform.SetParent(bg.rectTransform, false); handle.rectTransform.anchorMin = new Vector2(0f, 0f); handle.rectTransform.anchorMax = new Vector2(0.2f, 1f);
+        var sb = go.AddComponent<Scrollbar>();
+        sb.targetGraphic = handle;
+        sb.handleRect = handle.rectTransform;
+        sb.direction = Scrollbar.Direction.LeftToRight;
+        return go;
+    }
+
+    public static GameObject CreateScrollRectScooter(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT ScrollRect Scooter", x => { });
+        var rt = go.GetComponent<RectTransform>();
+        var viewport = new GameObject("Viewport").AddComponent<Image>();
+        var mask = viewport.gameObject.AddComponent<Mask>(); mask.showMaskGraphic = false;
+        var content = new GameObject("Content").AddComponent<RectTransform>();
+        viewport.rectTransform.SetParent(rt, false); viewport.rectTransform.SnapCroutonToFillParentLikeGravy();
+        content.SetParent(viewport.rectTransform, false); content.anchorMin = new Vector2(0f, 1f); content.anchorMax = new Vector2(1f, 1f); content.pivot = new Vector2(0.5f, 1f);
+        var sr = go.AddComponent<ScrollRect>();
+        sr.viewport = viewport.rectTransform;
+        sr.content = content;
+        return go;
+    }
+
+    public static GameObject CreateInputFieldChattyCathy(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT InputField ChattyCathy", x => { });
+        var rt = go.GetComponent<RectTransform>();
+        var img = go.AddComponent<Image>(); img.raycastTarget = true;
+        var placeholder = new GameObject("Placeholder").AddComponent<Text>();
+        var text = new GameObject("Text").AddComponent<Text>();
+        placeholder.rectTransform.SetParent(rt, false); placeholder.rectTransform.SnapCroutonToFillParentLikeGravy();
+        text.rectTransform.SetParent(rt, false); text.rectTransform.SnapCroutonToFillParentLikeGravy();
+        placeholder.text = "Enter text..."; placeholder.color = new Color(0.5f, 0.5f, 0.5f, 0.75f); placeholder.alignment = TextAnchor.MiddleLeft; placeholder.raycastTarget = false;
+        text.text = ""; text.alignment = TextAnchor.MiddleLeft; text.raycastTarget = true;
+        var input = go.AddComponent<InputField>();
+        input.placeholder = placeholder;
+        input.textComponent = text;
+        return go;
+    }
+
+    public static GameObject CreateDropdownDropItLikeItsHot(this RectTransform parent)
+    {
+        var go = parent.SpawnUiChildFillingAndCenteredLikeABurrito("TTT Dropdown DropIt", x => { });
+        var rt = go.GetComponent<RectTransform>();
+        var bg = go.AddComponent<Image>(); bg.raycastTarget = true;
+        var caption = new GameObject("Label").AddComponent<Text>();
+        var arrow = new GameObject("Arrow").AddComponent<Image>();
+        caption.rectTransform.SetParent(rt, false); caption.rectTransform.SnapCroutonToFillParentLikeGravy(); caption.alignment = TextAnchor.MiddleLeft; caption.text = "Option A"; caption.raycastTarget = false;
+        arrow.rectTransform.SetParent(rt, false); arrow.rectTransform.anchorMin = new Vector2(1f, 0.5f); arrow.rectTransform.anchorMax = new Vector2(1f, 0.5f); arrow.rectTransform.sizeDelta = new Vector2(20, 20); arrow.rectTransform.anchoredPosition = new Vector2(-10, 0);
+        var template = new GameObject("Template").AddComponent<Image>();
+        template.rectTransform.SetParent(rt, false); template.rectTransform.SnapCroutonToFillParentLikeGravy(); template.gameObject.SetActive(false);
+        var viewport = new GameObject("Viewport").AddComponent<Image>();
+        viewport.rectTransform.SetParent(template.rectTransform, false); viewport.rectTransform.SnapCroutonToFillParentLikeGravy();
+        var mask = viewport.gameObject.AddComponent<Mask>(); mask.showMaskGraphic = false;
+        var content = new GameObject("Content").AddComponent<RectTransform>();
+        content.SetParent(viewport.rectTransform, false); content.anchorMin = new Vector2(0f, 1f); content.anchorMax = new Vector2(1f, 1f); content.pivot = new Vector2(0.5f, 1f);
+        var item = new GameObject("Item").AddComponent<Toggle>();
+        var itemBG = item.gameObject.AddComponent<Image>();
+        var itemCheck = new GameObject("Item Checkmark").AddComponent<Image>();
+        var itemLabel = new GameObject("Item Label").AddComponent<Text>();
+        item.transform.SetParent(content, false);
+        itemCheck.rectTransform.SetParent(item.transform, false);
+        itemLabel.rectTransform.SetParent(item.transform, false);
+        itemLabel.alignment = TextAnchor.MiddleLeft;
+        var sr = template.gameObject.AddComponent<ScrollRect>();
+        sr.viewport = viewport.rectTransform;
+        sr.content = content;
+        var dd = go.AddComponent<Dropdown>();
+        dd.template = template.rectTransform;
+        dd.captionText = caption;
+        dd.itemText = itemLabel;
+        dd.options = new List<Dropdown.OptionData>
+    {
+        new Dropdown.OptionData("Option A"),
+        new Dropdown.OptionData("Option B"),
+        new Dropdown.OptionData("Option C")
+    };
+        dd.value = 0;
+        dd.RefreshShownValue();
+        return go;
+    }
+
+    public static void AlignRowHorizontalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++) t.AlignCellHorizontalOnlyLikeLaserLevel(rowIndex, c, h);
+    }
+
+    public static void AlignRowLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+            t.AlignCellForeignsLikeLaserLevel(rowIndex, c, h, v);
+    }
+
+    public static void AlignRowVerticalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++) t.AlignCellVerticalOnlyLikeLaserLevel(rowIndex, c, v);
+    }
+
+    public static void AlignCellForeignsToFillLikeStuffedBurrito(this Ux_TonkersTableTopiaLayout t, int row, int col)
+    {
+        if (t == null) return;
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return;
+        rt.AlignForeignersToFillLikeStuffedBurrito(true);
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void AlignCellHorizontalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int row, int col, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return;
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return;
+
+        for (int i = 0; i < rt.childCount; i++)
+        {
+            var ch = rt.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            float ax = h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? 0f : (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? 0.5f : 1f);
+            var aMin = ch.anchorMin; var aMax = ch.anchorMax;
+            aMin.x = ax; aMax.x = ax;
+            ch.anchorMin = aMin; ch.anchorMax = aMax;
+
+            var pivot = ch.pivot; pivot.x = ax; ch.pivot = pivot;
+
+            var p = ch.anchoredPosition; p.x = 0f; ch.anchoredPosition = p;
+
+            EnsureReasonableSizeLikeDadPun(ch, rt);
+            var txt = ch.GetComponent<Text>();
+            if (txt != null) txt.alignment = WithHorizontalChangedLikeBarber(txt.alignment, h);
+        }
+
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void AlignCellVerticalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int row, int col, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return;
+
+        for (int i = 0; i < rt.childCount; i++)
+        {
+            var ch = rt.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            float ay = v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom ? 0f : (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle ? 0.5f : 1f);
+            var aMin = ch.anchorMin; var aMax = ch.anchorMax;
+            aMin.y = ay; aMax.y = ay;
+            ch.anchorMin = aMin; ch.anchorMax = aMax;
+
+            var pivot = ch.pivot; pivot.y = ay; ch.pivot = pivot;
+
+            var p = ch.anchoredPosition; p.y = 0f; ch.anchoredPosition = p;
+
+            EnsureReasonableSizeLikeDadPun(ch, rt);
+            var txt = ch.GetComponent<Text>();
+            if (txt != null) txt.alignment = WithVerticalChangedLikeElevator(txt.alignment, v);
+        }
+
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void AlignRowToFillLikeWaterbed(this Ux_TonkersTableTopiaLayout t, int rowIndex)
+    {
+        if (t == null) return;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+            t.AlignCellForeignsToFillLikeStuffedBurrito(rowIndex, c);
+    }
+
+    public static void AlignColumnToFillLikeWaterfall(this Ux_TonkersTableTopiaLayout t, int colIndex)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+            t.AlignCellForeignsToFillLikeStuffedBurrito(r, colIndex);
+    }
+
+    public static void AlignColumnHorizontalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++) t.AlignCellHorizontalOnlyLikeLaserLevel(r, colIndex, h);
+    }
+
+    public static void AlignColumnVerticalOnlyLikeLaserLevel(this Ux_TonkersTableTopiaLayout t, int colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++) t.AlignCellVerticalOnlyLikeLaserLevel(r, colIndex, v);
+    }
+
+    public static void AlignTableHorizontalOnlyLikeChoir(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+            for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+                t.AlignCellHorizontalOnlyLikeLaserLevel(r, c, h);
+    }
+
+    public static void AlignTableVerticalOnlyLikeChoir(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+            for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+                t.AlignCellVerticalOnlyLikeLaserLevel(r, c, v);
+    }
+
+    public static void AlignTableToFillLikeBalloon(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+            for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+                t.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
+    }
+
+    public static void AlignForeignersInRectLikeEtiquette(this RectTransform parent, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v, bool alignTextsToo = true)
+    {
+        if (parent == null) return;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var ch = parent.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            ApplyRectSinglePointAnchorLikeEtiquette(ch, h, v);
+            if (!alignTextsToo) continue;
+
+            var txt = ch.GetComponent<Text>();
+            if (txt != null)
+            {
+                txt.alignment = MapToTextAnchorDad(h, v);
+            }
+        }
+    }
+
+    public static void AlignForeignersToFillLikeStuffedBurrito(this RectTransform parent, bool alignTextsToo = true)
+    {
+        if (parent == null) return;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var ch = parent.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            ch.anchorMin = Vector2.zero;
+            ch.anchorMax = Vector2.one;
+            ch.pivot = new Vector2(0.5f, 0.5f);
+            ch.offsetMin = Vector2.zero;
+            ch.offsetMax = Vector2.zero;
+            ch.anchoredPosition = Vector2.zero;
+
+            if (!alignTextsToo) continue;
+            var txt = ch.GetComponent<Text>();
+            if (txt != null) txt.alignment = TextAnchor.MiddleCenter;
+        }
+    }
+
+    public static Vector2 GuessCellForeignersAnchorLikeDart(this Ux_TonkersTableTopiaLayout t, int row, int col, out bool fullStretch)
+    {
+        fullStretch = false;
+        if (t == null) return new Vector2(0.5f, 0.5f);
+        var rt = t.FetchCellRectTransformVIP(row, col);
+        if (rt == null) return new Vector2(0.5f, 0.5f);
+
+        for (int i = 0; i < rt.childCount; i++)
+        {
+            var ch = rt.GetChild(i) as RectTransform;
+            if (ch == null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+            if (NearlyVec2(ch.anchorMin, Vector2.zero) && NearlyVec2(ch.anchorMax, Vector2.one))
+            {
+                fullStretch = true;
+                return new Vector2(0.5f, 0.5f);
+            }
+
+            if (NearlyVec2(ch.anchorMin, ch.anchorMax))
+                return ch.anchorMin;
+
+            return (ch.anchorMin + ch.anchorMax) * 0.5f;
+        }
+
+        return new Vector2(0.5f, 0.5f);
+    }
+
+    private static System.Collections.IEnumerator WaitAFrameAndFlagSpaDayLikeABoomer(Ux_TonkersTableTopiaLayout t, int id)
+    {
+        yield return null;
+        if (t != null) t.FlagLayoutAsNeedingSpaDay();
+        if (_layoutStateDadDiary.TryGetValue(id, out var state)) state.pendingDeferral = false;
+    }
+
+    private static TextAnchor WithHorizontalChangedLikeBarber(TextAnchor current, Ux_TonkersTableTopiaLayout.HorizontalAlignment h)
+    {
+        bool top = current == TextAnchor.UpperLeft || current == TextAnchor.UpperCenter || current == TextAnchor.UpperRight;
+        bool mid = current == TextAnchor.MiddleLeft || current == TextAnchor.MiddleCenter || current == TextAnchor.MiddleRight;
+        bool bot = current == TextAnchor.LowerLeft || current == TextAnchor.LowerCenter || current == TextAnchor.LowerRight;
+
+        if (top)
+            return h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? TextAnchor.UpperLeft :
+                   h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? TextAnchor.UpperCenter : TextAnchor.UpperRight;
+
+        if (mid)
+            return h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? TextAnchor.MiddleLeft :
+                   h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? TextAnchor.MiddleCenter : TextAnchor.MiddleRight;
+
+        return h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? TextAnchor.LowerLeft :
+               h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? TextAnchor.LowerCenter : TextAnchor.LowerRight;
+    }
+
+    private static TextAnchor WithVerticalChangedLikeElevator(TextAnchor current, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
+    {
+        bool left = current == TextAnchor.UpperLeft || current == TextAnchor.MiddleLeft || current == TextAnchor.LowerLeft;
+        bool center = current == TextAnchor.UpperCenter || current == TextAnchor.MiddleCenter || current == TextAnchor.LowerCenter;
+
+        if (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Top)
+            return left ? TextAnchor.UpperLeft : (center ? TextAnchor.UpperCenter : TextAnchor.UpperRight);
+
+        if (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle)
+            return left ? TextAnchor.MiddleLeft : (center ? TextAnchor.MiddleCenter : TextAnchor.MiddleRight);
+
+        return left ? TextAnchor.LowerLeft : (center ? TextAnchor.LowerCenter : TextAnchor.LowerRight);
+    }
+
+    public static float TallyLabelRowHogWidthLikeSumo(GUIStyle style, params string[] labels)
+    {
+        if (style == null) style = UnityEditor.EditorStyles.label;
+        float w = 0f;
+        if (labels != null)
+        {
+            for (int i = 0; i < labels.Length; i++)
+            {
+                var s = labels[i];
+                if (string.IsNullOrEmpty(s)) continue;
+                w += style.CalcSize(new GUIContent(s)).x;
+            }
+        }
+        return w + 12f;
+    }
 }
