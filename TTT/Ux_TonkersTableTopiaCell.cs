@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(RectTransform))]
+[DisallowMultipleComponent()]
 public class Ux_TonkersTableTopiaCell : MonoBehaviour
 {
     public Color backgroundColorLikeASunset = Color.white;
@@ -311,4 +312,5 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
         }
         return n;
     }
+
 }
