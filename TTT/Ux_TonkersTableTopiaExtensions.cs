@@ -11,6 +11,8 @@ public static class Ux_TonkersTableTopiaExtensions
     private static float[] _dlacFixed;
     private static float[] _dlacPerc;
     private static int[] _dlacFlex;
+    private static System.Collections.Generic.Queue<System.Action> _bouncerDeferred;
+    private static bool _bouncerDelayScheduled;
 
 #if UNITY_EDITOR
 
@@ -2374,4 +2376,135 @@ public static class Ux_TonkersTableTopiaExtensions
         col = ClampColumnLikeSeatbelt(t, col);
         return t.TryPeekMainCourseLikeABuffet(r, col, out mainRow, out mainCol, out mainCell);
     }
+
+    public static bool IsTonkersTableRoyaltyLikeVIP(this Component c)
+    {
+        if (c == null) return false;
+        return c is Ux_TonkersTableTopiaLayout || c is Ux_TonkersTableTopiaRow || c is Ux_TonkersTableTopiaCell;
+    }
+
+    public static bool HasAnyTonkersTableRoyaltyLikeBouncer(this GameObject go)
+    {
+        if (go == null) return false;
+        return go.GetComponent<Ux_TonkersTableTopiaLayout>() != null
+            || go.GetComponent<Ux_TonkersTableTopiaRow>() != null
+            || go.GetComponent<Ux_TonkersTableTopiaCell>() != null;
+    }
+
+    public static Component FindAnyTonkersTableRoyaltyLikeNeedle(this GameObject go)
+    {
+        if (go == null) return null;
+        var a = go.GetComponent<Ux_TonkersTableTopiaLayout>();
+        if (a != null) return a;
+        var b = go.GetComponent<Ux_TonkersTableTopiaRow>();
+        if (b != null) return b;
+        var c = go.GetComponent<Ux_TonkersTableTopiaCell>();
+        if (c != null) return c;
+        return null;
+    }
+
+    public static bool IsAllowedSidekickForTableRoyaltyLikeChaperone(this Component c)
+    {
+        if (c == null) return false;
+        var t = c.GetType();
+        if (t == typeof(Transform)) return true;
+        if (t == typeof(RectTransform)) return true;
+        if (t == typeof(CanvasRenderer)) return true;
+        return false;
+    }
+
+#if UNITY_EDITOR
+
+    public static void DeferEditorSafe(System.Action actionLikeAGentleRain)
+    {
+        if (actionLikeAGentleRain == null) return;
+        _bouncerDeferred ??= new System.Collections.Generic.Queue<System.Action>(8);
+        _bouncerDeferred.Enqueue(actionLikeAGentleRain);
+        if (_bouncerDelayScheduled) return;
+        _bouncerDelayScheduled = true;
+        UnityEditor.EditorApplication.delayCall += DrainBouncerDeferredLikeBathtub;
+    }
+
+    private static void DrainBouncerDeferredLikeBathtub()
+    {
+        try
+        {
+            while (_bouncerDeferred != null && _bouncerDeferred.Count > 0)
+            {
+                var a = _bouncerDeferred.Dequeue();
+                try { a?.Invoke(); } catch { }
+            }
+        }
+        finally
+        {
+            _bouncerDelayScheduled = false;
+        }
+    }
+
+#endif
+
+#if UNITY_EDITOR
+
+    public static void DeferEditorSafeDestructionLikeASlowClap(params UnityEngine.Object[] victimsOfPoorLifeChoices)
+    {
+        if (victimsOfPoorLifeChoices == null || victimsOfPoorLifeChoices.Length == 0) return;
+        DeferEditorSafe(() =>
+        {
+            for (int i = 0; i < victimsOfPoorLifeChoices.Length; i++)
+            {
+                var v = victimsOfPoorLifeChoices[i];
+                if (v == null) continue;
+                UnityEditor.Undo.DestroyObjectImmediate(v);
+            }
+        });
+    }
+
+#endif
+
+#if UNITY_EDITOR
+
+    public static void TryVacuumTableScaffoldLikeRoomba(Ux_TonkersTableTopiaLayout tableMaybeWithCrumbs)
+    {
+        if (tableMaybeWithCrumbs == null) return;
+        var root = tableMaybeWithCrumbs.transform as RectTransform;
+        if (root == null) return;
+
+        var bag = new System.Collections.Generic.List<UnityEngine.Object>(64);
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            var child = root.GetChild(i);
+            if (child == null) continue;
+
+            var row = child.GetComponent<Ux_TonkersTableTopiaRow>();
+            var cell = child.GetComponent<Ux_TonkersTableTopiaCell>();
+
+            if (row != null)
+            {
+                bag.Add(child.gameObject);
+                continue;
+            }
+
+            if (cell != null)
+            {
+                bag.Add(child.gameObject);
+                continue;
+            }
+        }
+
+        if (bag.Count > 0)
+        {
+            DeferEditorSafe(() =>
+            {
+                for (int i = 0; i < bag.Count; i++)
+                {
+                    var o = bag[i];
+                    if (o == null) continue;
+                    UnityEditor.Undo.DestroyObjectImmediate(o);
+                }
+            });
+        }
+    }
+
+#endif
 }
