@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 
 public static class Ux_TonkersTableTopiaExtensions
 
@@ -14,7 +14,7 @@ public static class Ux_TonkersTableTopiaExtensions
 
 #if UNITY_EDITOR
 
-    public static void SelectAndPingLikeABeacon(this Object target)
+    public static void SelectAndPingLikeABeacon(this UnityEngine.Object target)
     {
         if (target == null) return;
         UnityEditor.Selection.activeObject = target;
@@ -68,7 +68,11 @@ public static class Ux_TonkersTableTopiaExtensions
     public static float CalcShrinkyDinkWidthLikeDietCoke(int buttonCount, float min = 44f, float max = 120f, float gap = 4f, float padding = 32f)
     {
         if (buttonCount < 1) return min;
+#if UNITY_EDITOR
         float avail = Mathf.Max(1f, UnityEditor.EditorGUIUtility.currentViewWidth - padding);
+#else
+    float avail = Mathf.Max(1f, Screen.width - padding);
+#endif
         float w = (avail - gap * Mathf.Max(0, buttonCount - 1)) / buttonCount;
         return Mathf.Clamp(w, min, max);
     }
@@ -76,7 +80,11 @@ public static class Ux_TonkersTableTopiaExtensions
     public static float CalcShrinkyDinkWidthLikeDietCokeSquisher(int buttonCount, float occupiedWidth, float max = 160f, float gap = 4f, float padding = 32f)
     {
         if (buttonCount < 1) return 1f;
+#if UNITY_EDITOR
         float avail = Mathf.Max(1f, UnityEditor.EditorGUIUtility.currentViewWidth - padding - Mathf.Max(0f, occupiedWidth));
+#else
+    float avail = Mathf.Max(1f, Screen.width - padding - Mathf.Max(0f, occupiedWidth));
+#endif
         float w = (avail - gap * Mathf.Max(0, buttonCount - 1)) / buttonCount;
         return Mathf.Clamp(w, 1f, max);
     }
@@ -978,7 +986,28 @@ public static class Ux_TonkersTableTopiaExtensions
         }
         if (state.pendingDeferral) return;
         state.pendingDeferral = true;
-        t.StartCoroutine(WaitAFrameAndFlagSpaDayLikeABoomer(t, id));
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying || !t.isActiveAndEnabled)
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (t == null) return;
+                if (_layoutStateDadDiary.TryGetValue(id, out var st)) st.pendingDeferral = false;
+                t.FlagLayoutAsNeedingSpaDay();
+            };
+            return;
+        }
+#endif
+
+        if (t.isActiveAndEnabled)
+        {
+            t.StartCoroutine(WaitAFrameAndFlagSpaDayLikeABoomer(t, id));
+        }
+        else
+        {
+            if (_layoutStateDadDiary.TryGetValue(id, out var st)) st.pendingDeferral = false;
+        }
     }
 
     public static Image FlipImageComponentLikeALightSwitch(this RectTransform rt, bool needIt)
@@ -994,10 +1023,10 @@ public static class Ux_TonkersTableTopiaExtensions
         if (img != null)
         {
 #if UNITY_EDITOR
-            if (!Application.isPlaying) UnityEngine.Object.DestroyImmediate(img);
+            if (!Application.isPlaying) Object.DestroyImmediate(img);
             else
 #endif
-                UnityEngine.Object.Destroy(img);
+                Object.Destroy(img);
         }
         return null;
     }
@@ -1892,5 +1921,457 @@ public static class Ux_TonkersTableTopiaExtensions
             }
         }
         return w + 12f;
+    }
+
+    public static GameObject AddForeignKidToCellLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int row, int col, GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, atSiblingIndex);
+    }
+
+    public static T AddForeignKidToCellLikeDoorDash<T>(this Ux_TonkersTableTopiaLayout t, int row, int col, bool snapToFill = true, int atSiblingIndex = -1) where T : Component
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash<T>(snapToFill, atSiblingIndex);
+    }
+
+    public static GameObject AddForeignFirstInCellLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int row, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, 0);
+    }
+
+    public static GameObject AddForeignLastInCellLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int row, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, -1);
+    }
+
+    public static GameObject AddForeignKidToColumnAtRowLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int col, int row, GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, atSiblingIndex);
+    }
+
+    public static GameObject AddForeignFirstRowInColumnLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (t == null) return null;
+        return t.AddForeignKidToColumnAtRowLikeDoorDash(col, 0, prefab, snapToFill, -1);
+    }
+
+    public static GameObject AddForeignLastRowInColumnLikeDoorDash(this Ux_TonkersTableTopiaLayout t, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (t == null) return null;
+        int lastRow = Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1);
+        return t.AddForeignKidToColumnAtRowLikeDoorDash(col, lastRow, prefab, snapToFill, -1);
+    }
+
+    public static Ux_TonkersTableTopiaLayout AddNestedTableToCellLikeRussianDoll(this Ux_TonkersTableTopiaLayout t, int row, int col, bool ensureSnapToFill = true)
+    {
+        if (t == null) return null;
+        var kid = t.CreateChildTableInCellLikeABaby(row, col);
+        if (kid != null && ensureSnapToFill)
+        {
+            var rt = kid.GetComponent<RectTransform>();
+            if (rt != null) rt.SnapCroutonToFillParentLikeGravy();
+            t.FlagLayoutAsNeedingSpaDay();
+        }
+        return kid;
+    }
+
+    public static GameObject AddForeignLikeOneLinerAt(this Ux_TonkersTableTopiaRow row, int col, GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
+    {
+        if (row == null) return null;
+        return row.AddForeignKidAtColumnLikeDoorDash(col, prefab, snapToFill, atSiblingIndex);
+    }
+
+    public static T AddForeignLikeOneLinerAt<T>(this Ux_TonkersTableTopiaRow row, int col, bool snapToFill = true, int atSiblingIndex = -1) where T : Component
+    {
+        if (row == null) return null;
+        return row.AddForeignKidAtColumnLikeDoorDash<T>(col, snapToFill, atSiblingIndex);
+    }
+
+    public static GameObject AddForeignFirstLikeVIP(this Ux_TonkersTableTopiaRow row, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (row == null) return null;
+        return row.AddForeignKidAtColumnLikeDoorDash(col, prefab, snapToFill, 0);
+    }
+
+    public static GameObject AddForeignLastLikeClosingTime(this Ux_TonkersTableTopiaRow row, int col, GameObject prefab, bool snapToFill = true)
+    {
+        if (row == null) return null;
+        return row.AddForeignKidAtColumnLikeDoorDash(col, prefab, snapToFill, -1);
+    }
+
+    public static T AddForeignFirstLikeVIP<T>(this Ux_TonkersTableTopiaLayout t, int col, bool snapToFill = true) where T : Component
+    {
+        if (t == null) return null;
+        return t.AddForeignKidToColumnAtRowLikeDoorDash<T>(col, 0, snapToFill, 0);
+    }
+
+    public static T AddForeignLastLikeClosingTime<T>(this Ux_TonkersTableTopiaLayout t, int col, bool snapToFill = true) where T : Component
+    {
+        if (t == null) return null;
+        int lastRow = Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1);
+        return t.AddForeignKidToColumnAtRowLikeDoorDash<T>(col, lastRow, snapToFill, -1);
+    }
+
+    public static T AddForeignKidToColumnAtRowLikeDoorDash<T>(this Ux_TonkersTableTopiaLayout t, int col, int row, bool snapToFill = true, int atSiblingIndex = -1) where T : Component
+    {
+        if (t == null) return null;
+        var cell = t.GetCellLikePizzaSlice(row, col, true);
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash<T>(snapToFill, atSiblingIndex);
+    }
+
+    public static GameObject AddForeignFirstLikeVIP(this Ux_TonkersTableTopiaCell cell, GameObject prefab, bool snapToFill = true)
+    {
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, 0);
+    }
+
+    public static GameObject AddForeignLastLikeClosingTime(this Ux_TonkersTableTopiaCell cell, GameObject prefab, bool snapToFill = true)
+    {
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, -1);
+    }
+
+    public static T AddForeignFirstLikeVIP<T>(this Ux_TonkersTableTopiaCell cell, bool snapToFill = true) where T : Component
+    {
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash<T>(snapToFill, 0);
+    }
+
+    public static T AddForeignLastLikeClosingTime<T>(this Ux_TonkersTableTopiaCell cell, bool snapToFill = true) where T : Component
+    {
+        if (cell == null) return null;
+        return cell.AddForeignKidLikeDoorDash<T>(snapToFill, -1);
+    }
+
+    public static Ux_TonkersTableTopiaRow GetRowLikeBreadSlice(this Ux_TonkersTableTopiaLayout t, int row, bool createIfMissing = false)
+    {
+        if (t == null) return null;
+        if (createIfMissing) t.GetCellLikePizzaSlice(row, 0, true);
+        var rt = t.FetchRowRectTransformVIP(row);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaRow>() : null;
+    }
+
+    public static bool TryGetRowLikePoliteWaiter(this Ux_TonkersTableTopiaLayout t, int row, out Ux_TonkersTableTopiaRow result)
+    {
+        result = t.GetRowLikeBreadSlice(row, false);
+        return result != null;
+    }
+
+    public static List<Ux_TonkersTableTopiaRow> GetAllRowsLikeBakeryDozen(this Ux_TonkersTableTopiaLayout t)
+    {
+        var list = new List<Ux_TonkersTableTopiaRow>();
+        if (t == null) return list;
+        for (int r = 0; r < Mathf.Max(0, t.totalRowsCountLetTheShowBegin); r++)
+        {
+            var row = t.GetRowLikeBreadSlice(r, false);
+            if (row != null) list.Add(row);
+        }
+        return list;
+    }
+
+    public static bool TryGetCellLikePoliteWaiter(this Ux_TonkersTableTopiaLayout t, int row, int col, out Ux_TonkersTableTopiaCell cell)
+    {
+        cell = null;
+        if (t == null) return false;
+        cell = t.GetCellLikePizzaSlice(row, col, false);
+        return cell != null;
+    }
+
+    public static Ux_TonkersTableTopiaCell GetCellLikeMainCourseOnly(this Ux_TonkersTableTopiaLayout t, int row, int col)
+    {
+        if (t == null) return null;
+        if (!t.TryPeekMainCourseLikeABuffet(row, col, out _, out _, out var main)) return null;
+        return main;
+    }
+
+    public static List<Ux_TonkersTableTopiaCell> GetRowCellsLikeDonutFlight(this Ux_TonkersTableTopiaLayout t, int row, bool distinctMainsOnly = true)
+    {
+        var list = new List<Ux_TonkersTableTopiaCell>();
+        if (t == null) return list;
+        var seen = distinctMainsOnly ? new HashSet<Ux_TonkersTableTopiaCell>() : null;
+        for (int c = 0; c < Mathf.Max(0, t.totalColumnsCountHighFive); c++)
+        {
+            if (!t.TryPeekMainCourseLikeABuffet(row, c, out _, out _, out var main)) continue;
+            if (main == null) continue;
+            if (seen != null)
+            {
+                if (seen.Add(main)) list.Add(main);
+            }
+            else list.Add(main);
+        }
+        return list;
+    }
+
+    public static List<Ux_TonkersTableTopiaCell> GetColumnCellsLikeCornOnCob(this Ux_TonkersTableTopiaLayout t, int col, bool distinctMainsOnly = true)
+    {
+        var list = new List<Ux_TonkersTableTopiaCell>();
+        if (t == null) return list;
+        var seen = distinctMainsOnly ? new HashSet<Ux_TonkersTableTopiaCell>() : null;
+        for (int r = 0; r < Mathf.Max(0, t.totalRowsCountLetTheShowBegin); r++)
+        {
+            if (!t.TryPeekMainCourseLikeABuffet(r, col, out _, out _, out var main)) continue;
+            if (main == null) continue;
+            if (seen != null)
+            {
+                if (seen.Add(main)) list.Add(main);
+            }
+            else list.Add(main);
+        }
+        return list;
+    }
+
+    public static List<Ux_TonkersTableTopiaCell> GetAllCellsLikeBucketOfChicken(this Ux_TonkersTableTopiaLayout t, bool distinctMainsOnly = true)
+    {
+        var list = new List<Ux_TonkersTableTopiaCell>();
+        if (t == null) return list;
+        var seen = distinctMainsOnly ? new HashSet<Ux_TonkersTableTopiaCell>() : null;
+        for (int r = 0; r < Mathf.Max(0, t.totalRowsCountLetTheShowBegin); r++)
+        {
+            for (int c = 0; c < Mathf.Max(0, t.totalColumnsCountHighFive); c++)
+            {
+                if (!t.TryPeekMainCourseLikeABuffet(r, c, out _, out _, out var main)) continue;
+                if (main == null) continue;
+                if (seen != null)
+                {
+                    if (seen.Add(main)) list.Add(main);
+                }
+                else list.Add(main);
+            }
+        }
+        return list;
+    }
+
+    public static List<Ux_TonkersTableTopiaRow> GetRowRangeLikeSubwaySixInch(this Ux_TonkersTableTopiaLayout t, int startRowInclusive, int endRowInclusive, bool createIfMissing = false)
+    {
+        var list = new List<Ux_TonkersTableTopiaRow>();
+        if (t == null) return list;
+        if (t.totalRowsCountLetTheShowBegin < 1) return list;
+        int r0 = Mathf.Clamp(startRowInclusive, 0, t.totalRowsCountLetTheShowBegin - 1);
+        int r1 = Mathf.Clamp(endRowInclusive, 0, t.totalRowsCountLetTheShowBegin - 1);
+        if (r1 < r0) { var tmp = r0; r0 = r1; r1 = tmp; }
+        for (int r = r0; r <= r1; r++)
+        {
+            var row = t.GetRowLikeBreadSlice(r, createIfMissing);
+            if (row != null) list.Add(row);
+        }
+        return list;
+    }
+
+    public static List<Ux_TonkersTableTopiaCell> GetColumnRangeCellsLikeCornField(this Ux_TonkersTableTopiaLayout t, int startColInclusive, int endColInclusive, bool distinctMainsOnly = true)
+    {
+        var list = new List<Ux_TonkersTableTopiaCell>();
+        if (t == null) return list;
+        if (t.totalColumnsCountHighFive < 1) return list;
+        int c0 = Mathf.Clamp(startColInclusive, 0, t.totalColumnsCountHighFive - 1);
+        int c1 = Mathf.Clamp(endColInclusive, 0, t.totalColumnsCountHighFive - 1);
+        if (c1 < c0) { var tmp = c0; c0 = c1; c1 = tmp; }
+        var seen = distinctMainsOnly ? new HashSet<Ux_TonkersTableTopiaCell>() : null;
+        for (int c = c0; c <= c1; c++)
+        {
+            for (int r = 0; r < Mathf.Max(0, t.totalRowsCountLetTheShowBegin); r++)
+            {
+                if (!t.TryPeekMainCourseLikeABuffet(r, c, out _, out _, out var main)) continue;
+                if (main == null) continue;
+                if (seen != null)
+                {
+                    if (seen.Add(main)) list.Add(main);
+                }
+                else list.Add(main);
+            }
+        }
+        return list;
+    }
+
+    public static List<Ux_TonkersTableTopiaCell> GetCellsRectLikePicnicBlanket(this Ux_TonkersTableTopiaLayout t, int startRow, int startCol, int rowCount, int colCount, bool expandToWholeMergers = true, bool distinctMainsOnly = true)
+    {
+        var list = new List<Ux_TonkersTableTopiaCell>();
+        if (t == null) return list;
+        if (rowCount < 1 || colCount < 1) return list;
+        t.ClampRectToTableLikeASensibleSeatbelt(ref startRow, ref startCol, ref rowCount, ref colCount);
+        if (expandToWholeMergers) t.ExpandRectToWholeMergersLikeACarpenter(ref startRow, ref startCol, ref rowCount, ref colCount);
+        var seen = distinctMainsOnly ? new HashSet<Ux_TonkersTableTopiaCell>() : null;
+        for (int r = startRow; r < startRow + rowCount; r++)
+        {
+            for (int c = startCol; c < startCol + colCount; c++)
+            {
+                if (!t.TryPeekMainCourseLikeABuffet(r, c, out _, out _, out var main)) continue;
+                if (main == null) continue;
+                if (seen != null)
+                {
+                    if (seen.Add(main)) list.Add(main);
+                }
+                else list.Add(main);
+            }
+        }
+        return list;
+    }
+
+    public static Ux_TonkersTableTopiaRow GetFirstRowLikeEarlyBird(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null || t.totalRowsCountLetTheShowBegin < 1) return null;
+        var rt = t.FetchRowRectTransformVIP(0);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaRow>() : null;
+    }
+
+    public static Ux_TonkersTableTopiaRow GetLastRowLikeClosingTime(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return null;
+        int last = Mathf.Max(0, t.totalRowsCountLetTheShowBegin - 1);
+        return t.GetRowLikeBreadSlice(last, false);
+    }
+
+    public static Ux_TonkersTableTopiaRow GetRowLikeCornOnTheCob(this Ux_TonkersTableTopiaLayout t, int index)
+    {
+        if (t == null) return null;
+        var rt = t.FetchRowRectTransformVIP(index);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaRow>() : null;
+    }
+
+    private static Ux_TonkersTableTopiaLayout TableFromRowLikeGPS(Ux_TonkersTableTopiaRow row)
+    {
+        return row != null ? row.GetTableLikeFamilyReunion() : null;
+    }
+
+    private static int ClampColumnLikeSeatbelt(Ux_TonkersTableTopiaLayout t, int col)
+    {
+        return Mathf.Clamp(col, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+    }
+
+    public static RectTransform FetchCellRectTransformVIP(this Ux_TonkersTableTopiaRow row, int col)
+    {
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return null;
+        int r = row.rowNumberWhereShenanigansOccur;
+        col = ClampColumnLikeSeatbelt(t, col);
+        return t.FetchCellRectTransformVIP(r, col);
+    }
+
+    public static Ux_TonkersTableTopiaCell GetCellLikePizzaSlice(this Ux_TonkersTableTopiaRow row, int col, bool createIfMissing = false)
+    {
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return null;
+        int r = row.rowNumberWhereShenanigansOccur;
+        col = ClampColumnLikeSeatbelt(t, col);
+        return t.GetCellLikePizzaSlice(r, col, createIfMissing);
+    }
+
+    public static void GetAllCellRectsLikeSnackBar(this Ux_TonkersTableTopiaRow row, List<RectTransform> outList, bool includeInactive = true)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return;
+        int r = row.rowNumberWhereShenanigansOccur;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+        {
+            var rt = t.FetchCellRectTransformVIP(r, c);
+            if (rt == null) continue;
+            if (!includeInactive && !rt.gameObject.activeInHierarchy) continue;
+            outList.Add(rt);
+        }
+    }
+
+    public static void GetAllCellsLikeSnackBar(this Ux_TonkersTableTopiaRow row, List<Ux_TonkersTableTopiaCell> outList, bool includeInactive = true)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return;
+        int r = row.rowNumberWhereShenanigansOccur;
+        for (int c = 0; c < t.totalColumnsCountHighFive; c++)
+        {
+            var rt = t.FetchCellRectTransformVIP(r, c);
+            if (rt == null) continue;
+            if (!includeInactive && !rt.gameObject.activeInHierarchy) continue;
+            var cell = rt.GetComponent<Ux_TonkersTableTopiaCell>();
+            if (cell != null) outList.Add(cell);
+        }
+    }
+
+    public static void GetCellsInRangeLikeSamplerPlatter(this Ux_TonkersTableTopiaRow row, int startColInclusive, int endColInclusive, List<Ux_TonkersTableTopiaCell> outList, bool includeInactive = true)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return;
+        int r = row.rowNumberWhereShenanigansOccur;
+        int c0 = Mathf.Min(startColInclusive, endColInclusive);
+        int c1 = Mathf.Max(startColInclusive, endColInclusive);
+        c0 = ClampColumnLikeSeatbelt(t, c0);
+        c1 = ClampColumnLikeSeatbelt(t, c1);
+        for (int c = c0; c <= c1; c++)
+        {
+            var rt = t.FetchCellRectTransformVIP(r, c);
+            if (rt == null) continue;
+            if (!includeInactive && !rt.gameObject.activeInHierarchy) continue;
+            var cell = rt.GetComponent<Ux_TonkersTableTopiaCell>();
+            if (cell != null) outList.Add(cell);
+        }
+    }
+
+    public static void GetColumnOfCellRectsLikeSkyscraper(this Ux_TonkersTableTopiaRow row, int col, List<RectTransform> outList, bool includeInactive = true)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return;
+        col = ClampColumnLikeSeatbelt(t, col);
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+        {
+            var rt = t.FetchCellRectTransformVIP(r, col);
+            if (rt == null) continue;
+            if (!includeInactive && !rt.gameObject.activeInHierarchy) continue;
+            outList.Add(rt);
+        }
+    }
+
+    public static void GetColumnOfCellsLikeSkyscraper(this Ux_TonkersTableTopiaRow row, int col, List<Ux_TonkersTableTopiaCell> outList, bool includeInactive = true)
+    {
+        if (outList == null) return;
+        outList.Clear();
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return;
+        col = ClampColumnLikeSeatbelt(t, col);
+        for (int r = 0; r < t.totalRowsCountLetTheShowBegin; r++)
+        {
+            var rt = t.FetchCellRectTransformVIP(r, col);
+            if (rt == null) continue;
+            if (!includeInactive && !rt.gameObject.activeInHierarchy) continue;
+            var cell = rt.GetComponent<Ux_TonkersTableTopiaCell>();
+            if (cell != null) outList.Add(cell);
+        }
+    }
+
+    public static int TotalColumnsLikeRollCall(this Ux_TonkersTableTopiaRow row)
+    {
+        var t = TableFromRowLikeGPS(row);
+        return t != null ? Mathf.Max(0, t.totalColumnsCountHighFive) : 0;
+    }
+
+    public static bool TryPeekMainCourseLikeABuffet(this Ux_TonkersTableTopiaRow row, int col, out int mainRow, out int mainCol, out Ux_TonkersTableTopiaCell mainCell)
+    {
+        mainRow = -1;
+        mainCol = -1;
+        mainCell = null;
+        var t = TableFromRowLikeGPS(row);
+        if (t == null) return false;
+        int r = row.rowNumberWhereShenanigansOccur;
+        col = ClampColumnLikeSeatbelt(t, col);
+        return t.TryPeekMainCourseLikeABuffet(r, col, out mainRow, out mainCol, out mainCell);
     }
 }

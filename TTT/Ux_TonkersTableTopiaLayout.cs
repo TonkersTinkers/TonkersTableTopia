@@ -115,8 +115,8 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     private readonly List<RectTransform> _nonManagedRowBackpack = new List<RectTransform>(32);
     private readonly List<RectTransform> _thisRowCellsRects = new List<RectTransform>(64);
     private readonly List<Transform> _stowawaysOnThisCrazyTrain = new List<Transform>(64);
-    private float[] _rowHeightsBuf = System.Array.Empty<float>();
-    private float[] _colWidthsBuf = System.Array.Empty<float>();
+    private float[] _rowHeightsBuf = Array.Empty<float>();
+    private float[] _colWidthsBuf = Array.Empty<float>();
 
     private static readonly Comparison<RectTransform> _siblingIndexComparison = (left, right) => left.GetSiblingIndex().CompareTo(right.GetSiblingIndex());
 
@@ -343,7 +343,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         int instanceIdentificationBadge = GetInstanceID();
         if (_scheduledEditorUpdates.Contains(instanceIdentificationBadge)) return;
         _scheduledEditorUpdates.Add(instanceIdentificationBadge);
-        UnityEditor.EditorApplication.delayCall += () =>
+        EditorApplication.delayCall += () =>
         {
             if (this == null)
             {
@@ -418,7 +418,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 var freshlyMintedRowObject = new GameObject("TTT Row " + (_managedRowsLine.Count + 1));
                 freshlyMintedRowRect = freshlyMintedRowObject.AddComponent<RectTransform>();
                 freshlyMintedRowObject.AddComponent<Ux_TonkersTableTopiaRow>();
-                UnityEditor.Undo.RegisterCreatedObjectUndo(freshlyMintedRowObject, "Add Tonkers Table Topia Row");
+                Undo.RegisterCreatedObjectUndo(freshlyMintedRowObject, "Add Tonkers Table Topia Row");
             }
             else
 #endif
@@ -460,7 +460,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                     var freshCellObject = new GameObject($"TTT Cell {rowLooperCroissant + 1},{_managedCellsLine.Count + 1}");
                     freshCellRect = freshCellObject.AddComponent<RectTransform>();
                     freshCellObject.AddComponent<Ux_TonkersTableTopiaCell>();
-                    UnityEditor.Undo.RegisterCreatedObjectUndo(freshCellObject, "Add Tonkers Table Topia Cell");
+                    Undo.RegisterCreatedObjectUndo(freshCellObject, "Add Tonkers Table Topia Cell");
                 }
                 else
 #endif
@@ -480,7 +480,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 var extraCellRect = _managedCellsLine[cullStepper];
                 EscortNonVIPsToTarget(extraCellRect, targetCellForRowForeign);
 #if UNITY_EDITOR
-                if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(extraCellRect.gameObject);
+                if (!Application.isPlaying) Undo.DestroyObjectImmediate(extraCellRect.gameObject);
                 else
 #endif
                 {
@@ -542,7 +542,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 var extraRow = _managedRowsLine[rowReaper];
                 if (targetCell != null) EscortNonVIPsToTarget(extraRow, targetCell);
 #if UNITY_EDITOR
-                if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(extraRow.gameObject);
+                if (!Application.isPlaying) Undo.DestroyObjectImmediate(extraRow.gameObject);
                 else
 #endif
                 {
@@ -654,14 +654,14 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             if (rowRT != null)
             {
                 RefreshDirectForeignChildrenIn(rowRT);
-                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(rowRT);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rowRT);
             }
             for (int c = 0; c < totalColumnsCountHighFive; c++)
             {
                 var cellRT = backstageCellRectsVIP[r][c];
                 if (cellRT == null) continue;
                 RefreshDirectForeignChildrenIn(cellRT);
-                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(cellRT);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(cellRT);
             }
         }
         Canvas.ForceUpdateCanvases();
@@ -1134,10 +1134,10 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                         snapOffMin = rt.offsetMin;
                         snapOffMax = rt.offsetMax;
                     }
-                    UnityEditor.EditorApplication.delayCall += () =>
+                    EditorApplication.delayCall += () =>
                     {
                         if (trLocal == null || toLocal == null) return;
-                        UnityEditor.Undo.SetTransformParent(trLocal, toLocal, "Move Guests With Style");
+                        Undo.SetTransformParent(trLocal, toLocal, "Move Guests With Style");
                         var rtAfter = trLocal as RectTransform;
                         if (rtAfter == null) return;
                         if (rtAfter.IsFullStretchLikeYoga())
@@ -1158,7 +1158,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 }
                 return;
             }
-            UnityEditor.Undo.RecordObject(this, "Move Guests With Style");
+            Undo.RecordObject(this, "Move Guests With Style");
             for (int k = 0; k < _stowawaysOnThisCrazyTrain.Count; k++)
             {
                 var tr = _stowawaysOnThisCrazyTrain[k];
@@ -1175,7 +1175,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                     snapOffMin = rt.offsetMin;
                     snapOffMax = rt.offsetMax;
                 }
-                UnityEditor.Undo.SetTransformParent(tr, to, "Move Guests With Style");
+                Undo.SetTransformParent(tr, to, "Move Guests With Style");
                 var rtAfter = tr as RectTransform;
                 if (rtAfter == null) continue;
                 if (rtAfter.IsFullStretchLikeYoga())
@@ -1332,7 +1332,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             EscortNonVIPsToTarget(cellRT, target);
         }
 #if UNITY_EDITOR
-        if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(rowRT.gameObject);
+        if (!Application.isPlaying) Undo.DestroyObjectImmediate(rowRT.gameObject);
         else
 #endif
         {
@@ -1385,7 +1385,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             if (target == null) target = table;
             EscortNonVIPsToTarget(cellRT, target);
 #if UNITY_EDITOR
-            if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(cellRT.gameObject);
+            if (!Application.isPlaying) Undo.DestroyObjectImmediate(cellRT.gameObject);
             else
 #endif
             {
@@ -1528,7 +1528,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         var foreign = CollectWanderingObjectsForRow(index);
         if (foreign.Count > 0)
         {
-            if (!UnityEditor.EditorUtility.DisplayDialog("Row Removal", BuildConfirmBodyHilarious($"Row {index + 1}", foreign), "Delete With Gusto", "Cancel Kindly")) return false;
+            if (!EditorUtility.DisplayDialog("Row Removal", BuildConfirmBodyHilarious($"Row {index + 1}", foreign), "Delete With Gusto", "Cancel Kindly")) return false;
         }
 #endif
         return TryPolitelyDeleteRow(index);
@@ -1540,7 +1540,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         var foreign = CollectWanderingObjectsForColumn(index);
         if (foreign.Count > 0)
         {
-            if (!UnityEditor.EditorUtility.DisplayDialog("Column Removal", BuildConfirmBodyHilarious($"Column {index + 1}", foreign), "Delete With Gusto", "Cancel Kindly")) return false;
+            if (!EditorUtility.DisplayDialog("Column Removal", BuildConfirmBodyHilarious($"Column {index + 1}", foreign), "Delete With Gusto", "Cancel Kindly")) return false;
         }
 #endif
         return TryPolitelyDeleteColumn(index);
@@ -1650,5 +1650,27 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         child.RebuildComedyClubSeatingChart();
         child.FlagLayoutAsNeedingSpaDay();
         return child;
+    }
+
+    public Ux_TonkersTableTopiaCell GetCellLikePizzaSlice(int row, int col, bool createIfMissing = false)
+    {
+        if (row < 0 || col < 0) return null;
+        if (createIfMissing) GrowTableToFitLikeElasticPants(row + 1, col + 1);
+        if (row >= totalRowsCountLetTheShowBegin || col >= totalColumnsCountHighFive) return null;
+        RebuildComedyClubSeatingChart();
+        var rt = FetchCellRectTransformVIP(row, col);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaCell>() : null;
+    }
+
+    private void GrowTableToFitLikeElasticPants(int wantRows, int wantCols)
+    {
+        int addRows = Mathf.Max(0, wantRows - totalRowsCountLetTheShowBegin);
+        int addCols = Mathf.Max(0, wantCols - totalColumnsCountHighFive);
+        if (addRows == 0 && addCols == 0) return;
+        ConvertAllSpecsToPercentages();
+        for (int i = 0; i < addRows; i++) InsertRowLikeANinja(totalRowsCountLetTheShowBegin);
+        for (int i = 0; i < addCols; i++) InsertColumnLikeANinja(totalColumnsCountHighFive);
+        RebuildComedyClubSeatingChart();
+        FlagLayoutAsNeedingSpaDay();
     }
 }

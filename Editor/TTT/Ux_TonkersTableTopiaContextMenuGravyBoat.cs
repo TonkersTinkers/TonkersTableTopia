@@ -52,15 +52,15 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         if (table == null) return;
         var cellRT = table.FetchCellRectTransformVIP(r, c);
         if (cellRT == null) return;
-    
+
         var gm = new GenericMenu();
         var selectTarget = (UnityEngine.Object)(cellRT.GetComponent<Ux_TonkersTableTopiaCell>() ?? (UnityEngine.Object)cellRT);
         Action hl = new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, r, c, spanR, spanC));
         AddCancelSelectAndHighlightLikeABoss(gm, selectTarget, hl);
-    
+
         gm.AddDisabledItem(new GUIContent($"Row {r + 1}, Col {c + 1}"));
         gm.AddDisabledItem(new GUIContent($"Span Rows {spanR}, Cols {spanC}"));
-    
+
         if (canMerge) gm.AddItem(new GUIContent("Merge Selection"), false, () =>
         {
             Undo.RecordObject(table, "Merge Cells");
@@ -69,7 +69,7 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             EditorUtility.SetDirty(table);
         });
         else gm.AddDisabledItem(new GUIContent("Merge Selection"));
-    
+
         if (canUnmerge) gm.AddItem(new GUIContent("Unmerge Selection"), false, () =>
         {
             Undo.RecordObject(table, "Unmerge Selection");
@@ -78,9 +78,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             EditorUtility.SetDirty(table);
         });
         else gm.AddDisabledItem(new GUIContent("Unmerge Selection"));
-    
+
         gm.AddSeparator("");
-    
+
         gm.AddItem(new GUIContent("Row/Insert Above"), false, () =>
         {
             Undo.RecordObject(table, "Insert Row");
@@ -104,9 +104,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 table.SafeDeleteRowAtWithWittyConfirm(r);
             }
         });
-    
+
         gm.AddSeparator("Row/");
-    
+
         gm.AddItem(new GUIContent("Column/Insert Left"), false, () =>
         {
             Undo.RecordObject(table, "Insert Column");
@@ -130,9 +130,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 table.SafeDeleteColumnAtWithWittyConfirm(c);
             }
         });
-    
+
         gm.AddSeparator("");
-    
+
         for (int i = 0; i < _snacks.Count; i++)
         {
             var s = _snacks[i];
@@ -144,9 +144,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 EditorUtility.SetDirty(table);
             });
         }
-    
+
         gm.AddSeparator("");
-    
+
         var foreignKids = new List<Transform>(16);
         cellRT.ListForeignKidsLikeRollCall(foreignKids);
         if (foreignKids.Count == 0)
@@ -172,9 +172,9 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 });
             }
         }
-    
+
         gm.AddSeparator("");
-    
+
         Ux_TonkersTableTopiaLayout kidTable = null;
         bool hasKid = table.TryFindChildTableInCellLikeSherlock(r, c, out kidTable);
         if (!hasKid)
@@ -208,12 +208,11 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 EditorUtility.SetDirty(table);
             });
         }
-    
+
         gm.AddSeparator("");
         AddAlignSubmenuForCell(gm, table, r, c);
         gm.ShowAsContext();
     }
-
 
     public static void ShowForColumnHeader(Ux_TonkersTableTopiaLayout table, int colIndex)
     {
@@ -651,5 +650,4 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             EditorUtility.SetDirty(table);
         });
     }
-
 }
