@@ -746,6 +746,16 @@ public static class Ux_TonkersTableTopiaExtensions
         return Vector2.zero;
     }
 
+    private static GUIStyle FetchSafeGuiLabelLikeSeatbelt(GUIStyle incoming)
+    {
+        if (incoming != null) return incoming;
+#if UNITY_EDITOR
+        var ed = UnityEditor.EditorStyles.label;
+        if (ed != null) return ed;
+#endif
+        return GUI.skin != null ? GUI.skin.label : new GUIStyle();
+    }
+
     public static bool IsColumnAlignedLikeMirror(this Ux_TonkersTableTopiaLayout t, int col, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v)
     {
         if (t == null) return false;
@@ -1911,7 +1921,7 @@ public static class Ux_TonkersTableTopiaExtensions
 
     public static float TallyLabelRowHogWidthLikeSumo(GUIStyle style, params string[] labels)
     {
-        if (style == null) style = UnityEditor.EditorStyles.label;
+        style = FetchSafeGuiLabelLikeSeatbelt(style);
         float w = 0f;
         if (labels != null)
         {
