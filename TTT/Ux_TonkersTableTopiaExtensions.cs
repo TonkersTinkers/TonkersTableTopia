@@ -2517,4 +2517,47 @@ public static class Ux_TonkersTableTopiaExtensions
     }
 
 #endif
+
+    public static void SetTableBackgroundImage(this Ux_TonkersTableTopiaLayout t, Sprite sprite, Color? tint = null, bool useSliced = true, bool raycastTarget = false, bool disableRowAndColumnBackdrops = true, bool disableZebraStripes = true)
+    {
+        if (t == null) return;
+        var rt = t.GetComponent<RectTransform>();
+        if (rt == null) return;
+
+        var img = rt.FlipImageComponentLikeALightSwitch(sprite != null);
+        if (img != null)
+        {
+            img.sprite = sprite;
+            img.type = useSliced ? Image.Type.Sliced : Image.Type.Simple;
+            img.raycastTarget = raycastTarget;
+            var c = tint ?? Color.white;
+            if (c.a <= 0f) c.a = 1f;
+            img.color = c;
+        }
+
+        if (disableZebraStripes)
+        {
+            t.toggleZebraStripesForRows = false;
+            t.toggleZebraStripesForColumns = false;
+        }
+
+        if (disableRowAndColumnBackdrops)
+        {
+            t.SyncRowWardrobes();
+            t.SyncColumnWardrobes();
+            for (int i = 0; i < t.snazzyRowWardrobes.Count; i++) t.snazzyRowWardrobes[i].backdropPictureOnTheHouse = null;
+            for (int i = 0; i < t.fancyColumnWardrobes.Count; i++) t.fancyColumnWardrobes[i].backdropPictureOnTheHouse = null;
+        }
+
+        t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static void ClearTableBackgroundImage(this Ux_TonkersTableTopiaLayout t)
+    {
+        if (t == null) return;
+        var rt = t.GetComponent<RectTransform>();
+        if (rt == null) return;
+        rt.FlipImageComponentLikeALightSwitch(false);
+        t.FlagLayoutAsNeedingSpaDay();
+    }
 }
