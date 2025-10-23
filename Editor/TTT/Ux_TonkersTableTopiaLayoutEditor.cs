@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UI;
@@ -564,23 +564,26 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 EditorGUILayout.LabelField($"Cell R{cell.rowNumberWhereThePartyIs + 1}, C{cell.columnNumberPrimeRib + 1}", EditorStyles.boldLabel);
 
                 EditorGUI.BeginChangeCheck();
-                int newRowSpan = Mathf.Max(1, EditorGUILayout.IntField("Row Span", cell.howManyRowsAreHoggingThisSeat));
-                int newColSpan = Mathf.Max(1, EditorGUILayout.IntField("Col Span", cell.howManyColumnsAreSneakingIn));
-                if (EditorGUI.EndChangeCheck())
-                {
-                    Undo.RecordObject(cell, "Edit Cell Span");
-                    cell.howManyRowsAreHoggingThisSeat = newRowSpan;
-                    cell.howManyColumnsAreSneakingIn = newColSpan;
 
-                    var t = table;
-                    if (t)
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    int newRowSpan = Mathf.Max(1, EditorGUILayout.IntField("Row Span", cell.howManyRowsAreHoggingThisSeat));
+                    int newColSpan = Mathf.Max(1, EditorGUILayout.IntField("Col Span", cell.howManyColumnsAreSneakingIn));
+                    if (EditorGUI.EndChangeCheck())
                     {
-                        Undo.RecordObject(t, "Edit Cell Span");
-                        t.FlagLayoutAsNeedingSpaDay();
-                        EditorUtility.SetDirty(t);
+                        Undo.RecordObject(cell, "Edit Cell Span");
+                        cell.howManyRowsAreHoggingThisSeat = newRowSpan;
+                        cell.howManyColumnsAreSneakingIn = newColSpan;
+
+                        var t = table;
+                        if (t)
+                        {
+                            Undo.RecordObject(t, "Edit Cell Span");
+                            t.FlagLayoutAsNeedingSpaDay();
+                            EditorUtility.SetDirty(t);
+                        }
                     }
                 }
-
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     var t = table;
