@@ -545,6 +545,71 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
             }
+
+            bool tblImgToggle = EditorPrefs.GetBool("TTT_TableImg", false);
+            bool newTblImgToggle = EditorGUILayout.ToggleLeft("Table Image Settings", tblImgToggle);
+            if (newTblImgToggle != tblImgToggle)
+            {
+                EditorPrefs.SetBool("TTT_TableImg", newTblImgToggle);
+                if (!newTblImgToggle)
+                {
+                    var imgNow = table != null ? table.GetComponent<Image>() : null;
+                    if (imgNow != null && imgNow.sprite != null)
+                    {
+                        Undo.RecordObject(table, "Clear Table Background");
+                        table.ClearTableBackgroundImage();
+                        table.FlagLayoutAsNeedingSpaDay();
+                        EditorUtility.SetDirty(table);
+                    }
+                }
+            }
+
+            if (newTblImgToggle)
+            {
+                var img = table != null ? table.GetComponent<Image>() : null;
+                var curSprite = img != null ? img.sprite : null;
+                var curTint = img != null ? img.color : Color.white;
+
+                EditorGUI.BeginChangeCheck();
+                var newSprite = (Sprite)EditorGUILayout.ObjectField("Background Image", curSprite, typeof(Sprite), false);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    Undo.RecordObject(table, "Set Table Background Image");
+                    if (newSprite != null)
+                    {
+                        table.SetTableBackgroundImage(newSprite, curTint);
+                    }
+                    else
+                    {
+                        table.ClearTableBackgroundImage();
+                    }
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
+                }
+
+                var hasSprite = (newSprite != null) || (curSprite != null);
+                if (hasSprite)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    var newTint = EditorGUILayout.ColorField("Tint Color", curSprite != null ? curTint : Color.white);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        var liveImg = table != null ? table.GetComponent<Image>() : null;
+                        var liveSprite = liveImg != null ? liveImg.sprite : null;
+                        Undo.RecordObject(table, "Set Table Background Tint");
+                        if (liveSprite != null)
+                        {
+                            table.SetTableBackgroundImage(liveSprite, newTint);
+                        }
+                        else
+                        {
+                            table.ClearTableBackgroundImage();
+                        }
+                        table.FlagLayoutAsNeedingSpaDay();
+                        EditorUtility.SetDirty(table);
+                    }
+                }
+            }
         }
     }
 
