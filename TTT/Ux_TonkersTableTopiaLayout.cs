@@ -13,6 +13,7 @@ using UnityEngine.UI;
 [ExecuteAlways]
 [RequireComponent(typeof(RectTransform))]
 [AddComponentMenu("Layout/Tonkers Table Topia")]
+[DisallowMultipleComponent]
 public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 {
     [Tooltip("How many rows are strutting on stage")]
@@ -1232,7 +1233,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         }
     }
 
-    public bool InsertRowLikeANinja(int index)
+    public Ux_TonkersTableTopiaRow InsertRowLikeANinja(int index)
     {
         if (index < 0 || index > totalRowsCountLetTheShowBegin) index = Mathf.Clamp(index, 0, totalRowsCountLetTheShowBegin);
         ConvertAllSpecsToPercentages();
@@ -1264,10 +1265,11 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         for (int i = totalRowsCountLetTheShowBegin - 1; i > index; i--) SwapRowsLikeMusicalChairs(i, i - 1);
         shareThePieEvenlyForRows = false;
         FlagLayoutAsNeedingSpaDay();
-        return true;
+        var rt = FetchRowRectTransformVIP(index);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaRow>() : null;
     }
 
-    public bool InsertColumnLikeANinja(int index)
+    public Ux_TonkersTableTopiaCell InsertColumnLikeANinja(int index)
     {
         if (index < 0 || index > totalColumnsCountHighFive) index = Mathf.Clamp(index, 0, totalColumnsCountHighFive);
         ConvertAllSpecsToPercentages();
@@ -1299,7 +1301,22 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         for (int i = totalColumnsCountHighFive - 1; i > index; i--) SwapColumnsLikeTradingCards(i, i - 1);
         shareThePieEvenlyForColumns = false;
         FlagLayoutAsNeedingSpaDay();
-        return true;
+        var rt = FetchCellRectTransformVIP(0, index);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaCell>() : null;
+    }
+
+    public Ux_TonkersTableTopiaCell InsertRowLikeANinjaGetFirstCell(int index)
+    {
+        var row = InsertRowLikeANinja(index);
+        if (row == null) return null;
+        int r = row.rowNumberWhereShenanigansOccur;
+        var rt = FetchCellRectTransformVIP(r, 0);
+        return rt != null ? rt.GetComponent<Ux_TonkersTableTopiaCell>() : null;
+    }
+
+    public Ux_TonkersTableTopiaCell InsertColumnLikeANinjaGetFirstCell(int index)
+    {
+        return InsertColumnLikeANinja(index);
     }
 
     public bool TryPolitelyDeleteRow(int index)
