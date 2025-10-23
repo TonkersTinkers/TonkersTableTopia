@@ -60,7 +60,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         {
             GUILayout.Label("Align", GUILayout.Width(50));
 
-            // --- FIX: pre-initialize the out vars so they're definitely assigned ---
             bool isFull = false;
             Ux_TonkersTableTopiaLayout.HorizontalAlignment hCur = Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center;
             Ux_TonkersTableTopiaLayout.VerticalAlignment vCur = Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
@@ -69,8 +68,6 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
                                 cell.rowNumberWhereThePartyIs,
                                 cell.columnNumberPrimeRib,
                                 out isFull, out hCur, out vCur);
-            // ----------------------------------------------------------------------
-
             bool leftOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
             bool centerOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
             bool rightOn = hasState && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
@@ -172,18 +169,21 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
         }
 
         EditorGUI.BeginChangeCheck();
-        int newRowSpan = Mathf.Max(1, EditorGUILayout.IntField("Row Span", cell.howManyRowsAreHoggingThisSeat));
-        int newColSpan = Mathf.Max(1, EditorGUILayout.IntField("Col Span", cell.howManyColumnsAreSneakingIn));
-        if (EditorGUI.EndChangeCheck())
+        using (new EditorGUI.DisabledScope(true))
         {
-            Undo.RecordObject(cell, "Edit Cell Span");
-            cell.howManyRowsAreHoggingThisSeat = newRowSpan;
-            cell.howManyColumnsAreSneakingIn = newColSpan;
-            if (table)
+            int newRowSpan = Mathf.Max(1, EditorGUILayout.IntField("Row Span", cell.howManyRowsAreHoggingThisSeat));
+            int newColSpan = Mathf.Max(1, EditorGUILayout.IntField("Col Span", cell.howManyColumnsAreSneakingIn));
+            if (EditorGUI.EndChangeCheck())
             {
-                Undo.RecordObject(table, "Edit Cell Span");
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
+                Undo.RecordObject(cell, "Edit Cell Span");
+                cell.howManyRowsAreHoggingThisSeat = newRowSpan;
+                cell.howManyColumnsAreSneakingIn = newColSpan;
+                if (table)
+                {
+                    Undo.RecordObject(table, "Edit Cell Span");
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
+                }
             }
         }
 
