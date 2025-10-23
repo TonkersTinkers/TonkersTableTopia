@@ -934,25 +934,40 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     public void SwapRowsLikeMusicalChairs(int aIndex, int bIndex)
     {
         if (aIndex == bIndex || aIndex < 0 || bIndex < 0 || aIndex >= totalRowsCountLetTheShowBegin || bIndex >= totalRowsCountLetTheShowBegin) return;
+    
+        if (_rt == null) _rt = GetComponent<RectTransform>();
         RebuildComedyClubSeatingChart();
+    
         if (aIndex > bIndex)
         {
             var t = aIndex;
             aIndex = bIndex;
             bIndex = t;
         }
-        (snazzyRowWardrobes[aIndex], snazzyRowWardrobes[bIndex]) = (snazzyRowWardrobes[bIndex], snazzyRowWardrobes[aIndex]);
+    
+        int rowCount = backstageRowRectsVIP != null ? backstageRowRectsVIP.Count : 0;
+        if (rowCount <= aIndex || rowCount <= bIndex)
+        {
+            RebuildComedyClubSeatingChart();
+            rowCount = backstageRowRectsVIP != null ? backstageRowRectsVIP.Count : 0;
+            if (rowCount <= aIndex || rowCount <= bIndex) return;
+        }
+    
         RectTransform rowA = backstageRowRectsVIP[aIndex];
         RectTransform rowB = backstageRowRectsVIP[bIndex];
+    
         int idxA = rowA.GetSiblingIndex();
         int idxB = rowB.GetSiblingIndex();
         rowA.SetSiblingIndex(idxB);
         rowB.SetSiblingIndex(idxA);
+    
         backstageRowRectsVIP[aIndex] = rowB;
         backstageRowRectsVIP[bIndex] = rowA;
+    
         var tempCells = backstageCellRectsVIP[aIndex];
         backstageCellRectsVIP[aIndex] = backstageCellRectsVIP[bIndex];
         backstageCellRectsVIP[bIndex] = tempCells;
+    
         Ux_TonkersTableTopiaRow compA = rowB.GetComponent<Ux_TonkersTableTopiaRow>();
         Ux_TonkersTableTopiaRow compB = rowA.GetComponent<Ux_TonkersTableTopiaRow>();
         if (compA != null)
@@ -965,12 +980,15 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             compB.rowNumberWhereShenanigansOccur = bIndex;
             rowA.gameObject.name = "TTT Row " + (bIndex + 1);
         }
+    
         for (int columnStepper = 0; columnStepper < totalColumnsCountHighFive; columnStepper++)
         {
             RectTransform cellA = backstageCellRectsVIP[aIndex][columnStepper];
             RectTransform cellB = backstageCellRectsVIP[bIndex][columnStepper];
+    
             Ux_TonkersTableTopiaCell compCellA = cellA.GetComponent<Ux_TonkersTableTopiaCell>();
             Ux_TonkersTableTopiaCell compCellB = cellB.GetComponent<Ux_TonkersTableTopiaCell>();
+    
             if (compCellA != null)
             {
                 compCellA.rowNumberWhereThePartyIs = aIndex;
@@ -982,6 +1000,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 cellB.gameObject.name = $"TTT Cell {bIndex + 1},{columnStepper + 1}";
             }
         }
+    
         FlagLayoutAsNeedingSpaDay();
     }
 
@@ -1691,3 +1710,4 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         FlagLayoutAsNeedingSpaDay();
     }
 }
+
