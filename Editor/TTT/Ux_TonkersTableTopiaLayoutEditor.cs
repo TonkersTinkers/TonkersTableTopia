@@ -797,6 +797,9 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     }
                 }
             }
+
+            if (cells.Count == 1) DrawPaddingEditorForSingleCellLikeCouchCushions(cells[0]);
+            else DrawPaddingEditorForMultiCellsLikeCouchCushions(cells);
         }
     }
 
@@ -2374,5 +2377,129 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             for (int c = c0; c <= c1; c++)
                 table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
         EditorUtility.SetDirty(table);
+    }
+
+    private void DrawPaddingEditorForSingleCellLikeCouchCushions(Ux_TonkersTableTopiaCell cell)
+    {
+        bool padToggle = EditorPrefs.GetBool("TTT_CellPad_Wysi", false);
+        bool newPadToggle = EditorGUILayout.ToggleLeft("Padding Settings", padToggle);
+        if (newPadToggle != padToggle) EditorPrefs.SetBool("TTT_CellPad_Wysi", newPadToggle);
+        if (!newPadToggle) return;
+
+        EditorGUI.BeginChangeCheck();
+        bool usePad = EditorGUILayout.Toggle("Inner Padding Pillow Fort", cell.useInnerPaddingPillowFort);
+        float left = cell.innerPaddingLeftMarshmallow;
+        float right = cell.innerPaddingRightMarshmallow;
+        float top = cell.innerPaddingTopMarshmallow;
+        float bottom = cell.innerPaddingBottomMarshmallow;
+
+        if (usePad)
+        {
+            EditorGUI.indentLevel++;
+            left = EditorGUILayout.FloatField("Left Marshmallow", left);
+            right = EditorGUILayout.FloatField("Right Marshmallow", right);
+            top = EditorGUILayout.FloatField("Top Marshmallow", top);
+            bottom = EditorGUILayout.FloatField("Bottom Marshmallow", bottom);
+            EditorGUI.indentLevel--;
+        }
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            Undo.RecordObject(cell, "Edit Cell Padding");
+            cell.useInnerPaddingPillowFort = usePad;
+            cell.innerPaddingLeftMarshmallow = left;
+            cell.innerPaddingRightMarshmallow = right;
+            cell.innerPaddingTopMarshmallow = top;
+            cell.innerPaddingBottomMarshmallow = bottom;
+
+            if (table)
+            {
+                Undo.RecordObject(table, "Edit Cell Padding");
+                table.FlagLayoutAsNeedingSpaDay();
+                EditorUtility.SetDirty(table);
+            }
+            EditorUtility.SetDirty(cell);
+        }
+    }
+
+    private void DrawPaddingEditorForMultiCellsLikeCouchCushions(List<Ux_TonkersTableTopiaCell> cells)
+    {
+        if (cells == null || cells.Count == 0) return;
+
+        bool padToggle = EditorPrefs.GetBool("TTT_CellPad_Wysi", false);
+        bool newPadToggle = EditorGUILayout.ToggleLeft("Padding Settings", padToggle);
+        if (newPadToggle != padToggle) EditorPrefs.SetBool("TTT_CellPad_Wysi", newPadToggle);
+        if (!newPadToggle) return;
+
+        bool firstUse = cells[0].useInnerPaddingPillowFort;
+        bool mixedUse = false;
+        for (int i = 1; i < cells.Count; i++) { if (cells[i].useInnerPaddingPillowFort != firstUse) { mixedUse = true; break; } }
+
+        float firstL = cells[0].innerPaddingLeftMarshmallow;
+        float firstR = cells[0].innerPaddingRightMarshmallow;
+        float firstT = cells[0].innerPaddingTopMarshmallow;
+        float firstB = cells[0].innerPaddingBottomMarshmallow;
+
+        bool mixedL = false, mixedR = false, mixedT = false, mixedB = false;
+        for (int i = 1; i < cells.Count; i++)
+        {
+            if (!mixedL && cells[i].innerPaddingLeftMarshmallow != firstL) mixedL = true;
+            if (!mixedR && cells[i].innerPaddingRightMarshmallow != firstR) mixedR = true;
+            if (!mixedT && cells[i].innerPaddingTopMarshmallow != firstT) mixedT = true;
+            if (!mixedB && cells[i].innerPaddingBottomMarshmallow != firstB) mixedB = true;
+        }
+
+        EditorGUI.BeginChangeCheck();
+
+        EditorGUI.showMixedValue = mixedUse;
+        bool usePad = EditorGUILayout.Toggle("Inner Padding Pillow Fort", firstUse);
+        EditorGUI.showMixedValue = false;
+
+        float left = firstL, right = firstR, top = firstT, bottom = firstB;
+
+        if (usePad)
+        {
+            EditorGUI.indentLevel++;
+
+            EditorGUI.showMixedValue = mixedL;
+            left = EditorGUILayout.FloatField("Left Marshmallow", left);
+            EditorGUI.showMixedValue = mixedR;
+            right = EditorGUILayout.FloatField("Right Marshmallow", right);
+            EditorGUI.showMixedValue = mixedT;
+            top = EditorGUILayout.FloatField("Top Marshmallow", top);
+            EditorGUI.showMixedValue = mixedB;
+            bottom = EditorGUILayout.FloatField("Bottom Marshmallow", bottom);
+            EditorGUI.showMixedValue = false;
+
+            EditorGUI.indentLevel--;
+        }
+
+        if (EditorGUI.EndChangeCheck())
+        {
+            EnsureObjectBuffer(cells.Count);
+            for (int i = 0; i < cells.Count; i++) _objScratch[i] = cells[i];
+            Undo.RecordObjects(_objScratch, "Edit Cell Padding");
+
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var c = cells[i];
+                c.useInnerPaddingPillowFort = usePad;
+                if (usePad)
+                {
+                    c.innerPaddingLeftMarshmallow = left;
+                    c.innerPaddingRightMarshmallow = right;
+                    c.innerPaddingTopMarshmallow = top;
+                    c.innerPaddingBottomMarshmallow = bottom;
+                }
+            }
+
+            if (table)
+            {
+                Undo.RecordObject(table, "Edit Cell Padding");
+                table.FlagLayoutAsNeedingSpaDay();
+                EditorUtility.SetDirty(table);
+            }
+            for (int i = 0; i < cells.Count; i++) EditorUtility.SetDirty(cells[i]);
+        }
     }
 }
