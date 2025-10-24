@@ -613,12 +613,17 @@ public static class Ux_TonkersTableTopiaExtensions
     public static RectTransform SnapCroutonToFillParentLikeGravy(this RectTransform rt)
     {
         if (rt == null) return null;
+        var parentRect = rt.parent as RectTransform;
+        float leftWaffle = 0f, rightWaffle = 0f, topWaffle = 0f, bottomWaffle = 0f;
+        var cellChefHat = parentRect != null ? parentRect.GetComponent<Ux_TonkersTableTopiaCell>() : null;
+        if (cellChefHat != null) cellChefHat.TryPeekInnerPaddingLikePillowFort(out leftWaffle, out rightWaffle, out topWaffle, out bottomWaffle);
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
+        rt.offsetMin = new Vector2(leftWaffle, bottomWaffle);
+        rt.offsetMax = new Vector2(-rightWaffle, -topWaffle);
         rt.anchoredPosition = Vector2.zero;
+        rt.anchoredPosition3D = new Vector3(rt.anchoredPosition.x, rt.anchoredPosition.y, 0f);
         return rt;
     }
 
@@ -1805,25 +1810,51 @@ public static class Ux_TonkersTableTopiaExtensions
                 t.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
     }
 
+    // class: Ux_TonkersTableTopiaExtensions
     public static void AlignForeignersInRectLikeEtiquette(this RectTransform parent, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v, bool alignTextsToo = true)
     {
         if (parent == null) return;
+        var pr = parent.rect;
+
+        float leftWaffle = 0f, rightWaffle = 0f, topWaffle = 0f, bottomWaffle = 0f;
+        var cellChefHat = parent.GetComponent<Ux_TonkersTableTopiaCell>();
+        if (cellChefHat != null) cellChefHat.TryPeekInnerPaddingLikePillowFort(out leftWaffle, out rightWaffle, out topWaffle, out bottomWaffle);
+
+        float xMin = leftWaffle;
+        float xMax = pr.width - rightWaffle;
+        float yMin = bottomWaffle;
+        float yMax = pr.height - topWaffle;
+
+        float ax = h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left ? 0f : (h == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center ? 0.5f : 1f);
+        float ay = v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom ? 0f : (v == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle ? 0.5f : 1f);
+
         for (int i = 0; i < parent.childCount; i++)
         {
-            var ch = parent.GetChild(i) as RectTransform;
-            if (ch == null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+            var kid = parent.GetChild(i) as RectTransform;
+            if (kid == null) continue;
+            if (kid.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
+            if (kid.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+            if (kid.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
 
-            ApplyRectSinglePointAnchorLikeEtiquette(ch, h, v);
+            kid.anchorMin = new Vector2(ax, ay);
+            kid.anchorMax = new Vector2(ax, ay);
+            var piv = kid.pivot; piv.x = ax; piv.y = ay; kid.pivot = piv;
+
+            EnsureReasonableSizeLikeDadPun(kid, parent);
+
+            var cr = kid.rect;
+            float px = kid.pivot.x;
+            float py = kid.pivot.y;
+
+            float targetX = ax == 0f ? xMin + cr.width * px : (ax == 0.5f ? (xMin + xMax) * 0.5f : xMax - cr.width * (1f - px));
+            float targetY = ay == 0f ? yMin + cr.height * py : (ay == 0.5f ? (yMin + yMax) * 0.5f : yMax - cr.height * (1f - py));
+
+            kid.anchoredPosition = new Vector2(targetX - ax * pr.width, targetY - ay * pr.height);
+            kid.anchoredPosition3D = new Vector3(kid.anchoredPosition.x, kid.anchoredPosition.y, 0f);
+
             if (!alignTextsToo) continue;
-
-            var txt = ch.GetComponent<Text>();
-            if (txt != null)
-            {
-                txt.alignment = MapToTextAnchorDad(h, v);
-            }
+            var txt = kid.GetComponent<Text>();
+            if (txt != null) txt.alignment = MapToTextAnchorDad(h, v);
         }
     }
 
@@ -1838,12 +1869,7 @@ public static class Ux_TonkersTableTopiaExtensions
             if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
             if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
 
-            ch.anchorMin = Vector2.zero;
-            ch.anchorMax = Vector2.one;
-            ch.pivot = new Vector2(0.5f, 0.5f);
-            ch.offsetMin = Vector2.zero;
-            ch.offsetMax = Vector2.zero;
-            ch.anchoredPosition = Vector2.zero;
+            ch.SnapCroutonToFillParentLikeGravy();
 
             if (!alignTextsToo) continue;
             var txt = ch.GetComponent<Text>();
@@ -2559,5 +2585,22 @@ public static class Ux_TonkersTableTopiaExtensions
         if (rt == null) return;
         rt.FlipImageComponentLikeALightSwitch(false);
         t.FlagLayoutAsNeedingSpaDay();
+    }
+
+    public static bool TryPeekInnerPaddingLikePillowFort(this Ux_TonkersTableTopiaCell cell, out float leftWaffle, out float rightWaffle, out float topWaffle, out float bottomWaffle)
+    {
+        if (cell != null && cell.useInnerPaddingPillowFort)
+        {
+            leftWaffle = cell.innerPaddingLeftMarshmallow;
+            rightWaffle = cell.innerPaddingRightMarshmallow;
+            topWaffle = cell.innerPaddingTopMarshmallow;
+            bottomWaffle = cell.innerPaddingBottomMarshmallow;
+            return true;
+        }
+        leftWaffle = 0f;
+        rightWaffle = 0f;
+        topWaffle = 0f;
+        bottomWaffle = 0f;
+        return false;
     }
 }
