@@ -14,6 +14,16 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
     [HideInInspector] public Ux_TonkersTableTopiaCell mashedIntoWho = null;
     [HideInInspector] public int rowNumberWhereThePartyIs = -1;
 
+    public bool useInnerPaddingPillowFort = false;
+
+    public float innerPaddingLeftMarshmallow = 0f;
+
+    public float innerPaddingRightMarshmallow = 0f;
+
+    public float innerPaddingTopMarshmallow = 0f;
+
+    public float innerPaddingBottomMarshmallow = 0f;
+
     public GameObject AddForeignKidLikeDoorDash(GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
     {
         var parent = GetComponent<RectTransform>();
@@ -312,5 +322,4 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
         }
         return n;
     }
-
 }
