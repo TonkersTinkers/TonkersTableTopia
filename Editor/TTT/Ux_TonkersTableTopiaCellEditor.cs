@@ -236,6 +236,44 @@ public class Ux_TonkersTableTopiaCellEditor : Editor
             }
         }
 
+        bool padToggle = EditorPrefs.GetBool($"TTT_CellPad_{cell.GetInstanceID()}", false);
+        bool newPadToggle = EditorGUILayout.ToggleLeft("Padding Settings", padToggle);
+        if (newPadToggle != padToggle) EditorPrefs.SetBool($"TTT_CellPad_{cell.GetInstanceID()}", newPadToggle);
+        if (newPadToggle)
+        {
+            EditorGUI.BeginChangeCheck();
+            bool usePad = EditorGUILayout.Toggle("Inner Padding Pillow Fort", cell.useInnerPaddingPillowFort);
+            float left = cell.innerPaddingLeftMarshmallow;
+            float right = cell.innerPaddingRightMarshmallow;
+            float top = cell.innerPaddingTopMarshmallow;
+            float bottom = cell.innerPaddingBottomMarshmallow;
+            if (usePad)
+            {
+                EditorGUI.indentLevel++;
+                left = EditorGUILayout.FloatField("Left Marshmallow", left);
+                right = EditorGUILayout.FloatField("Right Marshmallow", right);
+                top = EditorGUILayout.FloatField("Top Marshmallow", top);
+                bottom = EditorGUILayout.FloatField("Bottom Marshmallow", bottom);
+                EditorGUI.indentLevel--;
+            }
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(cell, "Edit Cell Padding");
+                cell.useInnerPaddingPillowFort = usePad;
+                cell.innerPaddingLeftMarshmallow = left;
+                cell.innerPaddingRightMarshmallow = right;
+                cell.innerPaddingTopMarshmallow = top;
+                cell.innerPaddingBottomMarshmallow = bottom;
+                if (table)
+                {
+                    Undo.RecordObject(table, "Edit Cell Padding");
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
+                }
+                EditorUtility.SetDirty(cell);
+            }
+        }
+
         if (table == null)
         {
             EditorGUILayout.HelpBox("No TonkersTableTopiaLayout found in parents.", MessageType.Info);
