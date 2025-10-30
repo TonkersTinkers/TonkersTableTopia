@@ -2603,4 +2603,45 @@ public static class Ux_TonkersTableTopiaExtensions
         bottomWaffle = 0f;
         return false;
     }
+
+    public static void AdoptExternalIntoCellLikeStork(this Ux_TonkersTableTopiaLayout t, RectTransform dst, GameObject go)
+    {
+        if (t == null || dst == null || go == null) return;
+
+        var rt = go.GetComponent<RectTransform>();
+        if (rt == null) return;
+
+        if (go.GetComponent<Ux_TonkersTableTopiaRow>() != null) return;
+        if (go.GetComponent<Ux_TonkersTableTopiaCell>() != null) return;
+
+        Vector2 aMin = rt.anchorMin;
+        Vector2 aMax = rt.anchorMax;
+        Vector2 piv = rt.pivot;
+        Vector2 anch = rt.anchoredPosition;
+        Vector2 sizeDelta = rt.sizeDelta;
+        Vector2 offMin = rt.offsetMin;
+        Vector2 offMax = rt.offsetMax;
+
+#if UNITY_EDITOR
+        UnityEditor.Undo.SetTransformParent(rt.transform, dst, "Add To Cell");
+#else
+    rt.transform.SetParent(dst, false);
+#endif
+
+        var after = rt;
+        if (after.IsFullStretchLikeYoga())
+        {
+            after.SnapCroutonToFillParentLikeGravy();
+        }
+        else
+        {
+            after.anchorMin = aMin;
+            after.anchorMax = aMax;
+            after.pivot = piv;
+            after.sizeDelta = sizeDelta;
+            after.offsetMin = offMin;
+            after.offsetMax = offMax;
+            after.anchoredPosition = anch;
+        }
+    }
 }
