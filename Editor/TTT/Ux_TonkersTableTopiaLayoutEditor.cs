@@ -1764,6 +1764,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         var e = Event.current;
 
+        HandleHierarchyDragIntoGrid(grid, colW, rowH);
+
         if (e.type == EventType.MouseUp)
         {
             if (dragCol >= 0 || dragRow >= 0)
@@ -1785,14 +1787,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         int srcMainR, srcMainC;
                         Ux_TonkersTableTopiaCell srcMain;
                         table.TryPeekMainCourseLikeABuffet(moveSrcRow, moveSrcCol, out srcMainR, out srcMainC, out srcMain);
-
                         int dstMainR, dstMainC;
                         Ux_TonkersTableTopiaCell dstMain;
                         table.TryPeekMainCourseLikeABuffet(tr, tc, out dstMainR, out dstMainC, out dstMain);
-
                         var srcRT = table.FetchCellRectTransformVIP(srcMainR, srcMainC);
                         var dstRT = table.FetchCellRectTransformVIP(dstMainR, dstMainC);
-
                         if (srcRT != null && dstRT != null && srcRT != dstRT && dstRT.gameObject.activeInHierarchy)
                         {
                             bool moved = false;
@@ -2500,6 +2499,76 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 EditorUtility.SetDirty(table);
             }
             for (int i = 0; i < cells.Count; i++) EditorUtility.SetDirty(cells[i]);
+        }
+    }
+
+    private void HandleHierarchyDragIntoGrid(Rect grid, float[] colW, float[] rowH)
+    {
+        var e = Event.current;
+        if (e == null) return;
+        if (!(e.type == EventType.DragUpdated || e.type == EventType.DragPerform || e.type == EventType.DragExited)) return;
+        if (!grid.Contains(e.mousePosition)) return;
+        if (table == null) return;
+
+        int tr, tc;
+        Rect cellRect;
+        if (!GetCellAtMouseLikeHawk(grid, colW, rowH, e.mousePosition, out tr, out tc, out cellRect))
+            return;
+
+        var dst = table.FetchCellRectTransformVIP(tr, tc);
+        if (dst == null || !dst.gameObject.activeInHierarchy) return;
+
+        bool AnyValid(UnityEngine.Object[] refs)
+        {
+            if (refs == null || refs.Length == 0) return false;
+            for (int i = 0; i < refs.Length; i++)
+            {
+                var go = refs[i] as GameObject;
+                if (go == null) continue;
+                if (go.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+                if (go.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+                return true;
+            }
+            return false;
+        }
+
+        bool isValid = AnyValid(DragAndDrop.objectReferences);
+        DragAndDrop.visualMode = isValid ? DragAndDropVisualMode.Move : DragAndDropVisualMode.Rejected;
+
+        if (e.type == EventType.DragUpdated)
+        {
+            e.Use();
+            Repaint();
+            return;
+        }
+
+        if (e.type == EventType.DragPerform)
+        {
+            if (!isValid) { e.Use(); return; }
+            DragAndDrop.AcceptDrag();
+
+            Undo.IncrementCurrentGroup();
+            for (int i = 0; i < DragAndDrop.objectReferences.Length; i++)
+            {
+                var go = DragAndDrop.objectReferences[i] as GameObject;
+                if (go == null) continue;
+                if (go.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
+                if (go.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
+
+                table.AdoptExternalIntoCellLikeStork(dst, go);
+            }
+
+            table.FlagLayoutAsNeedingSpaDay();
+            EditorUtility.SetDirty(table);
+            e.Use();
+            Repaint();
+            RepaintSceneViewLikeABobRoss();
+            return;
+        }
+
+        if (e.type == EventType.DragExited)
+        {
+            e.Use();
         }
     }
 }
