@@ -28,7 +28,8 @@ The game for which this editor script was made and used in.
 * Per row and per column custom anchors and pivot overrides.
 * Optional ContentSizeFitter auto sizing on cells.
 * Alignment tools: Left, Center, Right; Top, Middle, Bottom; or Full stretch, applied to cells, selections, rows, columns, or full table.
-* New Move mode: drag contents or nested tables from one cell to another.
+* Move mode: drag contents or nested tables from one cell to another.
+* Drag external objects from heirarchy direclty into table cells.
 * Nested tables: create a child table inside any cell, select or delete it, double click a cell with a nested table to jump into it, "Up to Parent Tonkers Table" button in the inspector.
 * Header interactions: click a column or row header to select it, right click headers or split handles for context menus including even split helpers.
 * Cell badges in the preview indicate what common UI components are inside each cell and whether a nested table exists.
