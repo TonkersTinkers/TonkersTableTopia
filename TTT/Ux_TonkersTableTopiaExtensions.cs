@@ -458,13 +458,12 @@ public static class Ux_TonkersTableTopiaExtensions
 
     public static Ux_TonkersTableTopiaCell GrabCellLikeItOwesYouRent(this Ux_TonkersTableTopiaLayout table, int row, int col)
     {
+        if (table == null) return null;
         if (row < 0 || col < 0 || row >= table.totalRowsCountLetTheShowBegin || col >= table.totalColumnsCountHighFive) return null;
-        RectTransform tableRT = table.GetComponent<RectTransform>();
-        if (tableRT.childCount <= row) return null;
-        Transform rowTrans = tableRT.GetChild(row);
-        if (rowTrans.childCount <= col) return null;
+        var rowTrans = table.FetchRowRectTransformVIP(row);
+        if (rowTrans == null || rowTrans.childCount <= col) return null;
         Transform cellTrans = rowTrans.GetChild(col);
-        return cellTrans.GetComponent<Ux_TonkersTableTopiaCell>();
+        return cellTrans != null ? cellTrans.GetComponent<Ux_TonkersTableTopiaCell>() : null;
     }
 
     public static bool IsFullStretchLikeYoga(this RectTransform rt)
@@ -1810,7 +1809,6 @@ public static class Ux_TonkersTableTopiaExtensions
                 t.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
     }
 
-    // class: Ux_TonkersTableTopiaExtensions
     public static void AlignForeignersInRectLikeEtiquette(this RectTransform parent, Ux_TonkersTableTopiaLayout.HorizontalAlignment h, Ux_TonkersTableTopiaLayout.VerticalAlignment v, bool alignTextsToo = true)
     {
         if (parent == null) return;
@@ -2643,5 +2641,89 @@ public static class Ux_TonkersTableTopiaExtensions
             after.offsetMax = offMax;
             after.anchoredPosition = anch;
         }
+    }
+
+    public static bool TryResolveCellBackgroundVisualLikeSherlock(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaCell cell, out Sprite sprite, out Color tint, out bool useSliced)
+    {
+        sprite = null;
+        tint = Color.clear;
+        useSliced = true;
+        if (t == null || cell == null) return false;
+        if (cell.isMashedLikePotatoes && cell.mashedIntoWho != null)
+        {
+            cell = cell.mashedIntoWho;
+        }
+        if (cell.backgroundPictureBecausePlainIsLame != null)
+        {
+            sprite = cell.backgroundPictureBecausePlainIsLame;
+            tint = cell.backgroundColorLikeASunset;
+            useSliced = cell.backgroundPictureUseSlicedLikePizza;
+            return true;
+        }
+        if (t.IsUsingOneBigColumnBackdropLikeWallpaper(cell))
+        {
+            return false;
+        }
+        if (t.TryResolveColumnBackdropAcrossSpanLikeSherlock(cell, out sprite, out tint, out useSliced))
+        {
+            return true;
+        }
+        bool useRow = t.toggleZebraStripesForRows;
+        bool useCol = t.toggleZebraStripesForColumns;
+        if (!useRow && !useCol) return false;
+        int safeRow = Mathf.Max(0, cell.rowNumberWhereThePartyIs);
+        int safeCol = Mathf.Max(0, cell.columnNumberPrimeRib);
+        Color rc = ((safeRow & 1) == 0) ? t.zebraRowColorA : t.zebraRowColorB;
+        Color cc = ((safeCol & 1) == 0) ? t.zebraColumnColorA : t.zebraColumnColorB;
+        tint = useRow && useCol ? new Color((rc.r + cc.r) * 0.5f, (rc.g + cc.g) * 0.5f, (rc.b + cc.b) * 0.5f, Mathf.Max(rc.a, cc.a)) : (useRow ? rc : cc);
+        useSliced = true;
+        return true;
+    }
+
+    public static bool TryResolveColumnBackdropAcrossSpanLikeSherlock(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaCell cell, out Sprite sprite, out Color tint, out bool useSliced)
+    {
+        sprite = null;
+        tint = Color.clear;
+        useSliced = true;
+        if (t == null || cell == null) return false;
+        if (cell.isMashedLikePotatoes && cell.mashedIntoWho != null)
+        {
+            cell = cell.mashedIntoWho;
+        }
+        t.SyncColumnWardrobes();
+        int startCol = Mathf.Clamp(cell.columnNumberPrimeRib, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        int spanCols = Mathf.Clamp(Mathf.Max(1, cell.howManyColumnsAreSneakingIn), 1, Mathf.Max(1, t.totalColumnsCountHighFive - startCol));
+        for (int c = startCol; c < startCol + spanCols; c++)
+        {
+            if (c < 0 || c >= t.fancyColumnWardrobes.Count) continue;
+            var style = t.fancyColumnWardrobes[c];
+            if (style == null) continue;
+            if (style.backdropPictureOnTheHouse == null) continue;
+            if (style.useOneBigBackdropForWholeColumn) continue;
+            sprite = style.backdropPictureOnTheHouse;
+            tint = style.backdropTintFlavor;
+            useSliced = style.backdropUseSlicedLikePizza;
+            return true;
+        }
+        return false;
+    }
+
+    public static bool IsUsingOneBigColumnBackdropLikeWallpaper(this Ux_TonkersTableTopiaLayout t, Ux_TonkersTableTopiaCell cell)
+    {
+        if (t == null || cell == null) return false;
+        if (cell.isMashedLikePotatoes && cell.mashedIntoWho != null) cell = cell.mashedIntoWho;
+        t.SyncColumnWardrobes();
+        int startCol = Mathf.Clamp(cell.columnNumberPrimeRib, 0, Mathf.Max(0, t.totalColumnsCountHighFive - 1));
+        int spanCols = Mathf.Clamp(Mathf.Max(1, cell.howManyColumnsAreSneakingIn), 1, Mathf.Max(1, t.totalColumnsCountHighFive - startCol));
+        for (int c = startCol; c < startCol + spanCols; c++)
+        {
+            if (c < 0 || c >= t.fancyColumnWardrobes.Count) continue;
+            var style = t.fancyColumnWardrobes[c];
+            if (style == null) continue;
+            if (style.backdropPictureOnTheHouse == null) continue;
+            if (!style.useOneBigBackdropForWholeColumn) continue;
+            return true;
+        }
+        return false;
     }
 }

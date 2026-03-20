@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(RectTransform))]
-[DisallowMultipleComponent()]
+[DisallowMultipleComponent]
 public class Ux_TonkersTableTopiaRow : MonoBehaviour
 {
     [HideInInspector] public int rowNumberWhereShenanigansOccur = -1;
@@ -65,5 +65,4 @@ public class Ux_TonkersTableTopiaRow : MonoBehaviour
     {
         return rowNumberWhereShenanigansOccur;
     }
-
 }

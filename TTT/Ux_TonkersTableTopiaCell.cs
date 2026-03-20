@@ -7,6 +7,7 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
 {
     public Color backgroundColorLikeASunset = Color.white;
     public Sprite backgroundPictureBecausePlainIsLame = null;
+    public bool backgroundPictureUseSlicedLikePizza = true;
     [HideInInspector] public int columnNumberPrimeRib = -1;
     [HideInInspector] public int howManyColumnsAreSneakingIn = 1;
     [HideInInspector] public int howManyRowsAreHoggingThisSeat = 1;
@@ -283,6 +284,7 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
     {
         var rt = GetComponent<RectTransform>();
         if (rt == null) return;
+
         var bin = new List<Transform>(rt.childCount);
         for (int i = 0; i < rt.childCount; i++)
         {
@@ -293,15 +295,17 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
             if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
             bin.Add(ch);
         }
+
         for (int i = 0; i < bin.Count; i++)
         {
             var g = bin[i].gameObject;
 #if UNITY_EDITOR
-            if (!Application.isPlaying) DestroyImmediate(g);
+            if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(g);
             else
 #endif
                 Destroy(g);
         }
+
         var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
         if (t != null) t.FlagLayoutAsNeedingSpaDay();
     }

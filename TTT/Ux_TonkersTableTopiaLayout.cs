@@ -78,6 +78,8 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         public Vector2 customAnchorMinPointy = new Vector2(0f, 1f);
         public Vector2 customAnchorMaxPointy = new Vector2(0f, 1f);
         public Vector2 customPivotSpinny = new Vector2(0f, 1f);
+        public bool useOneBigBackdropForWholeColumn = true;
+        public bool backdropUseSlicedLikePizza = true;
     }
 
     [Serializable]
@@ -86,6 +88,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         public float requestedHeightMaybePercentIfNegative = 0f;
         public Sprite backdropPictureOnTheHouse = null;
         public Color backdropTintFlavor = Color.white;
+        public bool backdropUseSlicedLikePizza = true;
         public bool customAnchorsAndPivotBecauseWeFancy = false;
         public Vector2 customAnchorMinPointy = new Vector2(0f, 1f);
         public Vector2 customAnchorMaxPointy = new Vector2(0f, 1f);
@@ -97,6 +100,8 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
     public List<ColumnStyle> fancyColumnWardrobes = new List<ColumnStyle>();
     public List<RowStyle> snazzyRowWardrobes = new List<RowStyle>();
+    private RectTransform _columnBackdropHostRT;
+    private readonly List<RectTransform> _columnBackdropScratch = new List<RectTransform>(32);
 
     private List<RectTransform> backstageRowRectsVIP = new List<RectTransform>();
     private List<List<RectTransform>> backstageCellRectsVIP = new List<List<RectTransform>>();
@@ -589,7 +594,8 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         {
             img.sprite = rowStyle.backdropPictureOnTheHouse;
             img.color = rowStyle.backdropTintFlavor;
-            img.type = Image.Type.Sliced;
+            img.type = rowStyle.backdropUseSlicedLikePizza ? Image.Type.Sliced : Image.Type.Simple;
+            img.raycastTarget = false;
         }
     }
 
@@ -612,34 +618,25 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         if (tableRectTransformMainStage == null) return;
         RebuildComedyClubSeatingChart();
         if (totalColumnsCountHighFive == 0 || totalRowsCountLetTheShowBegin == 0) return;
-
         var calculatedRowHeightsBuffet = CalculateRowHeightsLikeAShortOrderCook(tableRectTransformMainStage);
         float totalContentHeightCalories = CalculateTotalContentHeightCalories(calculatedRowHeightsBuffet);
-
         if (autoHugHeightBecauseWhyNot && !AreWeStretchingVertically(tableRectTransformMainStage)) tableRectTransformMainStage.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, totalContentHeightCalories);
-
         float innerWidthPlayable = Mathf.Max(0, tableRectTransformMainStage.rect.width - comfyPaddingLeftForElbows - comfyPaddingRightForElbows);
         float innerHeightPlayable = Mathf.Max(0, tableRectTransformMainStage.rect.height - comfyPaddingTopHat - comfyPaddingBottomCushion);
-
         var baseColumnWidths = CalculateBaseColumnWidths(innerWidthPlayable);
-
+        RefreshColumnBackdropLayerLikeWallpaperCrew(baseColumnWidths, innerHeightPlayable);
         float leftOffsetStart = comfyPaddingLeftForElbows;
         float currentYTopDown = CalculateVerticalGrandEntrance(tableRectTransformMainStage, totalContentHeightCalories) - comfyPaddingTopHat;
-
         for (int rowStepperWaffle = 0; rowStepperWaffle < totalRowsCountLetTheShowBegin; rowStepperWaffle++)
         {
             float rowHeightThisRound = calculatedRowHeightsBuffet[rowStepperWaffle];
             var rowRT = backstageRowRectsVIP[rowStepperWaffle];
             Vector2 oldRowSizeJeans = rowRT != null ? rowRT.rect.size : Vector2.zero;
-
             ParkRowInItsAssignedSpot(rowStepperWaffle, rowHeightThisRound, tableRectTransformMainStage, innerWidthPlayable, leftOffsetStart, currentYTopDown, tableRectTransformMainStage.rect.width, tableRectTransformMainStage.rect.height);
             ParkCellsInRowWithoutDingedBumpers(rowStepperWaffle, rowHeightThisRound, innerWidthPlayable, calculatedRowHeightsBuffet, baseColumnWidths);
-
             if (rowRT != null) rowRT.ScaleForeignKidsToFitNewParentSizeLikeDadJeans(oldRowSizeJeans, rowRT.rect.size);
-
             currentYTopDown -= (rowHeightThisRound + sociallyDistancedRowsPixels);
         }
-
         RefreshForeignGuestsLikeAMagician();
     }
 
@@ -763,47 +760,19 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
 
     private void DressCellToImpress(RectTransform cellRect, Ux_TonkersTableTopiaCell cellComp, int columnIndex)
     {
+        if (cellRect == null || cellComp == null) return;
         if (cellComp.isMashedLikePotatoes)
         {
             cellRect.FlipImageComponentLikeALightSwitch(false);
             return;
         }
-        bool isMergedTopLeft = (cellComp.howManyRowsAreHoggingThisSeat > 1 || cellComp.howManyColumnsAreSneakingIn > 1);
-        if (isMergedTopLeft)
-        {
-            cellRect.FlipImageComponentLikeALightSwitch(false);
-            return;
-        }
-        if (cellComp.backgroundPictureBecausePlainIsLame != null)
+        if (this.TryResolveCellBackgroundVisualLikeSherlock(cellComp, out var sprite, out var tint, out var useSliced))
         {
             var img = cellRect.FlipImageComponentLikeALightSwitch(true);
-            img.sprite = cellComp.backgroundPictureBecausePlainIsLame;
-            img.color = cellComp.backgroundColorLikeASunset;
-            img.type = Image.Type.Sliced;
-            return;
-        }
-        if (columnIndex < fancyColumnWardrobes.Count && fancyColumnWardrobes[columnIndex].backdropPictureOnTheHouse != null)
-        {
-            var cs = fancyColumnWardrobes[columnIndex];
-            var img = cellRect.FlipImageComponentLikeALightSwitch(true);
-            img.sprite = cs.backdropPictureOnTheHouse;
-            img.color = cs.backdropTintFlavor;
-            img.type = Image.Type.Sliced;
-            return;
-        }
-        bool useRow = toggleZebraStripesForRows;
-        bool useCol = toggleZebraStripesForColumns;
-        if (useRow || useCol)
-        {
-            int safeRow = Mathf.Max(0, cellComp.rowNumberWhereThePartyIs);
-            int safeCol = Mathf.Max(0, cellComp.columnNumberPrimeRib);
-            Color rc = ((safeRow & 1) == 0) ? zebraRowColorA : zebraRowColorB;
-            Color cc = ((safeCol & 1) == 0) ? zebraColumnColorA : zebraColumnColorB;
-            Color final = useRow && useCol ? new Color((rc.r + cc.r) * 0.5f, (rc.g + cc.g) * 0.5f, (rc.b + cc.b) * 0.5f, Mathf.Max(rc.a, cc.a)) : (useRow ? rc : cc);
-            var img = cellRect.FlipImageComponentLikeALightSwitch(true);
-            img.sprite = null;
-            img.type = Image.Type.Simple;
-            img.color = final;
+            img.sprite = sprite;
+            img.color = tint;
+            img.type = sprite != null && useSliced ? Image.Type.Sliced : Image.Type.Simple;
+            img.raycastTarget = false;
             return;
         }
         cellRect.FlipImageComponentLikeALightSwitch(false);
@@ -934,17 +903,17 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     public void SwapRowsLikeMusicalChairs(int aIndex, int bIndex)
     {
         if (aIndex == bIndex || aIndex < 0 || bIndex < 0 || aIndex >= totalRowsCountLetTheShowBegin || bIndex >= totalRowsCountLetTheShowBegin) return;
-    
+
         if (_rt == null) _rt = GetComponent<RectTransform>();
         RebuildComedyClubSeatingChart();
-    
+
         if (aIndex > bIndex)
         {
             var t = aIndex;
             aIndex = bIndex;
             bIndex = t;
         }
-    
+
         int rowCount = backstageRowRectsVIP != null ? backstageRowRectsVIP.Count : 0;
         if (rowCount <= aIndex || rowCount <= bIndex)
         {
@@ -952,22 +921,22 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             rowCount = backstageRowRectsVIP != null ? backstageRowRectsVIP.Count : 0;
             if (rowCount <= aIndex || rowCount <= bIndex) return;
         }
-    
+
         RectTransform rowA = backstageRowRectsVIP[aIndex];
         RectTransform rowB = backstageRowRectsVIP[bIndex];
-    
+
         int idxA = rowA.GetSiblingIndex();
         int idxB = rowB.GetSiblingIndex();
         rowA.SetSiblingIndex(idxB);
         rowB.SetSiblingIndex(idxA);
-    
+
         backstageRowRectsVIP[aIndex] = rowB;
         backstageRowRectsVIP[bIndex] = rowA;
-    
+
         var tempCells = backstageCellRectsVIP[aIndex];
         backstageCellRectsVIP[aIndex] = backstageCellRectsVIP[bIndex];
         backstageCellRectsVIP[bIndex] = tempCells;
-    
+
         Ux_TonkersTableTopiaRow compA = rowB.GetComponent<Ux_TonkersTableTopiaRow>();
         Ux_TonkersTableTopiaRow compB = rowA.GetComponent<Ux_TonkersTableTopiaRow>();
         if (compA != null)
@@ -980,15 +949,15 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             compB.rowNumberWhereShenanigansOccur = bIndex;
             rowA.gameObject.name = "TTT Row " + (bIndex + 1);
         }
-    
+
         for (int columnStepper = 0; columnStepper < totalColumnsCountHighFive; columnStepper++)
         {
             RectTransform cellA = backstageCellRectsVIP[aIndex][columnStepper];
             RectTransform cellB = backstageCellRectsVIP[bIndex][columnStepper];
-    
+
             Ux_TonkersTableTopiaCell compCellA = cellA.GetComponent<Ux_TonkersTableTopiaCell>();
             Ux_TonkersTableTopiaCell compCellB = cellB.GetComponent<Ux_TonkersTableTopiaCell>();
-    
+
             if (compCellA != null)
             {
                 compCellA.rowNumberWhereThePartyIs = aIndex;
@@ -1000,7 +969,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 cellB.gameObject.name = $"TTT Cell {bIndex + 1},{columnStepper + 1}";
             }
         }
-    
+
         FlagLayoutAsNeedingSpaDay();
     }
 
@@ -1105,11 +1074,13 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     public RectTransform FetchRowRectTransformVIP(int index)
     {
         if (index < 0 || index >= totalRowsCountLetTheShowBegin) return null;
-        RectTransform tableRT = _rt;
-        if (tableRT == null) return null;
-        if (tableRT.childCount <= index) return null;
-        var t = tableRT.GetChild(index);
-        return t.GetComponent<Ux_TonkersTableTopiaRow>() != null ? (RectTransform)t : null;
+        if (backstageRowRectsVIP != null && index < backstageRowRectsVIP.Count)
+        {
+            var cached = backstageRowRectsVIP[index];
+            if (cached != null) return cached;
+        }
+        RebuildComedyClubSeatingChart();
+        return backstageRowRectsVIP != null && index < backstageRowRectsVIP.Count ? backstageRowRectsVIP[index] : null;
     }
 
     private bool IsThisRowOnTheGuestList(Transform t)
@@ -1129,7 +1100,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         for (int i = 0; i < from.childCount; i++)
         {
             var ch = from.GetChild(i);
-            if (!IsThisRowOnTheGuestList(ch) && !IsThisCellOnTheGuestList(ch)) _stowawaysOnThisCrazyTrain.Add(ch);
+            if (!IsThisRowOnTheGuestList(ch) && !IsThisCellOnTheGuestList(ch) && !IsThisRootDecoratorOnTheGuestList(ch)) _stowawaysOnThisCrazyTrain.Add(ch);
         }
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -1157,7 +1128,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                     EditorApplication.delayCall += () =>
                     {
                         if (trLocal == null || toLocal == null) return;
-                        Undo.SetTransformParent(trLocal, toLocal, "Move Guests With Style");
+                        UnityEditor.Undo.SetTransformParent(trLocal, toLocal, "Move Guests With Style");
                         var rtAfter = trLocal as RectTransform;
                         if (rtAfter == null) return;
                         if (rtAfter.IsFullStretchLikeYoga())
@@ -1178,7 +1149,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                 }
                 return;
             }
-            Undo.RecordObject(this, "Move Guests With Style");
+            UnityEditor.Undo.RecordObject(this, "Move Guests With Style");
             for (int k = 0; k < _stowawaysOnThisCrazyTrain.Count; k++)
             {
                 var tr = _stowawaysOnThisCrazyTrain[k];
@@ -1195,7 +1166,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
                     snapOffMin = rt.offsetMin;
                     snapOffMax = rt.offsetMax;
                 }
-                Undo.SetTransformParent(tr, to, "Move Guests With Style");
+                UnityEditor.Undo.SetTransformParent(tr, to, "Move Guests With Style");
                 var rtAfter = tr as RectTransform;
                 if (rtAfter == null) continue;
                 if (rtAfter.IsFullStretchLikeYoga())
@@ -1555,7 +1526,51 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
     public bool TryKindlyDeleteCell(int row, int col)
     {
         if (row < 0 || col < 0 || row >= totalRowsCountLetTheShowBegin || col >= totalColumnsCountHighFive) return false;
-        return SafeDeleteColumnAtWithWittyConfirm(col);
+        return ClearCellLikeFreshNotebook(row, col);
+    }
+
+    private bool ClearCellLikeFreshNotebook(int row, int col)
+    {
+        RebuildComedyClubSeatingChart();
+
+        if (!this.TryPeekMainCourseLikeABuffet(row, col, out var mainRow, out var mainCol, out var mainCell)) return false;
+        if (mainCell == null) return false;
+
+        if (mainCell.howManyRowsAreHoggingThisSeat > 1 || mainCell.howManyColumnsAreSneakingIn > 1)
+        {
+            UnmergeCellEveryoneGetsTheirOwnChair(mainRow, mainCol);
+            RebuildComedyClubSeatingChart();
+            mainCell = GetCellLikePizzaSlice(mainRow, mainCol, false);
+            if (mainCell == null) return false;
+        }
+
+        var cellRT = FetchCellRectTransformVIP(mainRow, mainCol);
+        if (cellRT == null) return false;
+
+        if (TryFindChildTableInCellLikeSherlock(mainRow, mainCol, out var kidTable) && kidTable != null)
+        {
+#if UNITY_EDITOR
+            if (!Application.isPlaying) Undo.DestroyObjectImmediate(kidTable.gameObject);
+            else
+#endif
+                Destroy(kidTable.gameObject);
+        }
+
+        mainCell.ClearForeignKidsLikeVacuum(true);
+        mainCell.backgroundPictureBecausePlainIsLame = null;
+        mainCell.backgroundColorLikeASunset = Color.white;
+        mainCell.useInnerPaddingPillowFort = false;
+        mainCell.innerPaddingLeftMarshmallow = 0f;
+        mainCell.innerPaddingRightMarshmallow = 0f;
+        mainCell.innerPaddingTopMarshmallow = 0f;
+        mainCell.innerPaddingBottomMarshmallow = 0f;
+        mainCell.howManyRowsAreHoggingThisSeat = 1;
+        mainCell.howManyColumnsAreSneakingIn = 1;
+        mainCell.isMashedLikePotatoes = false;
+        mainCell.mashedIntoWho = null;
+
+        FlagLayoutAsNeedingSpaDay();
+        return true;
     }
 
     public bool SafeDeleteRowAtWithWittyConfirm(int index)
@@ -1709,5 +1724,244 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         RebuildComedyClubSeatingChart();
         FlagLayoutAsNeedingSpaDay();
     }
-}
 
+    private bool IsThisRootDecoratorOnTheGuestList(Transform t)
+    {
+        return t != null && t.GetComponent<Ux_TonkersTableTopiaColumnBackdropHost>() != null;
+    }
+
+    private RectTransform EnsureColumnBackdropHostLikeWallpaperCrew()
+    {
+        if (_rt == null) _rt = GetComponent<RectTransform>();
+        if (_rt == null) return null;
+        if (_columnBackdropHostRT == null || _columnBackdropHostRT.parent != _rt)
+        {
+            _columnBackdropHostRT = null;
+            for (int i = 0; i < _rt.childCount; i++)
+            {
+                var child = _rt.GetChild(i) as RectTransform;
+                if (child == null) continue;
+                if (child.GetComponent<Ux_TonkersTableTopiaColumnBackdropHost>() == null) continue;
+                _columnBackdropHostRT = child;
+                break;
+            }
+        }
+        if (_columnBackdropHostRT == null)
+        {
+            GameObject go;
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                go = new GameObject("TTT Column Backdrops");
+                _columnBackdropHostRT = go.AddComponent<RectTransform>();
+                go.AddComponent<Ux_TonkersTableTopiaColumnBackdropHost>();
+                UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create Column Backdrop Host");
+            }
+            else
+#endif
+            {
+                go = new GameObject("TTT Column Backdrops");
+                _columnBackdropHostRT = go.AddComponent<RectTransform>();
+                go.AddComponent<Ux_TonkersTableTopiaColumnBackdropHost>();
+            }
+            _columnBackdropHostRT.SetParent(_rt, false);
+        }
+        _columnBackdropHostRT.gameObject.name = "TTT Column Backdrops";
+        _columnBackdropHostRT.anchorMin = Vector2.zero;
+        _columnBackdropHostRT.anchorMax = Vector2.one;
+        _columnBackdropHostRT.pivot = new Vector2(0.5f, 0.5f);
+        _columnBackdropHostRT.offsetMin = Vector2.zero;
+        _columnBackdropHostRT.offsetMax = Vector2.zero;
+        _columnBackdropHostRT.anchoredPosition = Vector2.zero;
+        _columnBackdropHostRT.SetSiblingIndex(0);
+        return _columnBackdropHostRT;
+    }
+
+    private RectTransform PullColumnBackdropFromScratchLikeSherlock(int columnIndex)
+    {
+        for (int i = 0; i < _columnBackdropScratch.Count; i++)
+        {
+            var rt = _columnBackdropScratch[i];
+            if (rt == null) continue;
+            var tag = rt.GetComponent<Ux_TonkersTableTopiaColumnBackdrop>();
+            if (tag == null || tag.columnNumberPrimeRib != columnIndex) continue;
+            _columnBackdropScratch.RemoveAt(i);
+            return rt;
+        }
+        return null;
+    }
+
+    private RectTransform CreateColumnBackdropLikeWallpaperStrip(RectTransform host, int columnIndex)
+    {
+        if (host == null) return null;
+        GameObject go;
+        RectTransform rt;
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            go = new GameObject("TTT Column Backdrop " + (columnIndex + 1));
+            rt = go.AddComponent<RectTransform>();
+            go.AddComponent<Ux_TonkersTableTopiaColumnBackdrop>();
+            go.AddComponent<Image>();
+            UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Create Column Backdrop");
+        }
+        else
+#endif
+        {
+            go = new GameObject("TTT Column Backdrop " + (columnIndex + 1));
+            rt = go.AddComponent<RectTransform>();
+            go.AddComponent<Ux_TonkersTableTopiaColumnBackdrop>();
+            go.AddComponent<Image>();
+        }
+        rt.SetParent(host, false);
+        return rt;
+    }
+
+    private void DestroyColumnBackdropLikeExpiredCoupon(RectTransform rt)
+    {
+        if (rt == null) return;
+#if UNITY_EDITOR
+        if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(rt.gameObject);
+        else
+#endif
+            Destroy(rt.gameObject);
+    }
+
+    private void RefreshColumnBackdropLayerLikeWallpaperCrew(float[] baseColumnWidths, float innerHeightPlayable)
+    {
+        SyncColumnWardrobes();
+
+        bool anyNeeded = false;
+        for (int c = 0; c < totalColumnsCountHighFive; c++)
+        {
+            var style = c < fancyColumnWardrobes.Count ? fancyColumnWardrobes[c] : null;
+            if (style != null && style.backdropPictureOnTheHouse != null && style.useOneBigBackdropForWholeColumn)
+            {
+                anyNeeded = true;
+                break;
+            }
+        }
+
+        if (!anyNeeded)
+        {
+            if (_columnBackdropHostRT != null)
+            {
+                DestroyColumnBackdropLikeExpiredCoupon(_columnBackdropHostRT);
+                _columnBackdropHostRT = null;
+            }
+            return;
+        }
+
+        var host = EnsureColumnBackdropHostLikeWallpaperCrew();
+        if (host == null) return;
+
+        for (int i = 0; i < backstageRowRectsVIP.Count; i++)
+        {
+            var row = backstageRowRectsVIP[i];
+            if (row != null) row.SetSiblingIndex(i + 1);
+        }
+
+        _columnBackdropScratch.Clear();
+        for (int i = 0; i < host.childCount; i++)
+        {
+            var child = host.GetChild(i) as RectTransform;
+            if (child == null) continue;
+            if (child.GetComponent<Ux_TonkersTableTopiaColumnBackdrop>() == null) continue;
+            _columnBackdropScratch.Add(child);
+        }
+
+        float x = comfyPaddingLeftForElbows;
+        int siblingIndex = 0;
+
+        for (int c = 0; c < totalColumnsCountHighFive; c++)
+        {
+            float columnWidth = (baseColumnWidths != null && c < baseColumnWidths.Length) ? Mathf.Max(0f, baseColumnWidths[c]) : 0f;
+            var style = c < fancyColumnWardrobes.Count ? fancyColumnWardrobes[c] : null;
+            bool needBackdrop = style != null && style.backdropPictureOnTheHouse != null && style.useOneBigBackdropForWholeColumn;
+            var backdrop = PullColumnBackdropFromScratchLikeSherlock(c);
+
+            if (needBackdrop)
+            {
+                int spanCols = Mathf.Max(1, GetColumnBackdropSpanLikeWallpaperCrew(c));
+                int endColExclusive = Mathf.Min(totalColumnsCountHighFive, c + spanCols);
+
+                float backdropWidth = 0f;
+                for (int spanCol = c; spanCol < endColExclusive; spanCol++)
+                {
+                    backdropWidth += (baseColumnWidths != null && spanCol < baseColumnWidths.Length) ? Mathf.Max(0f, baseColumnWidths[spanCol]) : 0f;
+                }
+
+                if (spanCols > 1) backdropWidth += sociallyDistancedColumnsPixels * (spanCols - 1);
+
+                if (backdrop == null) backdrop = CreateColumnBackdropLikeWallpaperStrip(host, c);
+                if (backdrop == null)
+                {
+                    x += columnWidth + sociallyDistancedColumnsPixels;
+                    continue;
+                }
+
+                backdrop.SetParent(host, false);
+                backdrop.gameObject.SetActive(true);
+                backdrop.SetSiblingIndex(siblingIndex++);
+                backdrop.gameObject.name = "TTT Column Backdrop " + (c + 1);
+
+                var tag = backdrop.GetComponent<Ux_TonkersTableTopiaColumnBackdrop>() ?? backdrop.gameObject.AddComponent<Ux_TonkersTableTopiaColumnBackdrop>();
+                tag.columnNumberPrimeRib = c;
+
+                ApplyRectPlacementWithPanache(
+                    backdrop,
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    new Vector2(0f, 1f),
+                    x,
+                    -comfyPaddingTopHat,
+                    backdropWidth,
+                    innerHeightPlayable,
+                    _rt.rect.width,
+                    _rt.rect.height
+                );
+
+                var img = backdrop.GetComponent<Image>() ?? backdrop.gameObject.AddComponent<Image>();
+                img.enabled = true;
+                img.sprite = style.backdropPictureOnTheHouse;
+                img.color = style.backdropTintFlavor;
+                img.type = style.backdropUseSlicedLikePizza ? Image.Type.Sliced : Image.Type.Simple;
+                img.raycastTarget = false;
+            }
+            else if (backdrop != null)
+            {
+                DestroyColumnBackdropLikeExpiredCoupon(backdrop);
+            }
+
+            x += columnWidth + sociallyDistancedColumnsPixels;
+        }
+
+        for (int i = 0; i < _columnBackdropScratch.Count; i++)
+        {
+            var extra = _columnBackdropScratch[i];
+            if (extra == null) continue;
+            DestroyColumnBackdropLikeExpiredCoupon(extra);
+        }
+    }
+
+    public int GetColumnBackdropSpanLikeWallpaperCrew(int columnIndex)
+    {
+        if (columnIndex < 0 || columnIndex >= totalColumnsCountHighFive) return 1;
+
+        int maxEndColumn = columnIndex;
+
+        for (int r = 0; r < totalRowsCountLetTheShowBegin; r++)
+        {
+            if (!this.TryPeekMainCourseLikeABuffet(r, columnIndex, out _, out var mainCol, out var mainCell)) continue;
+            if (mainCell == null) continue;
+            if (mainCol != columnIndex) continue;
+
+            int spanCols = Mathf.Max(1, mainCell.howManyColumnsAreSneakingIn);
+            int endColumn = Mathf.Min(totalColumnsCountHighFive - 1, mainCol + spanCols - 1);
+
+            if (endColumn > maxEndColumn) maxEndColumn = endColumn;
+        }
+
+        return maxEndColumn - columnIndex + 1;
+    }
+}
