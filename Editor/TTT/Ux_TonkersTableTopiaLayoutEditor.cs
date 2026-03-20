@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UI;
@@ -32,6 +32,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private static int selRow = -1, selCol = -1, selRow2 = -1, selCol2 = -1;
     private static bool showDefaultInspector = false;
     private static bool showPreview = true;
+    private static bool highlightDragActive = false;
 
     private float[] startColW, startRowH;
 
@@ -54,6 +55,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private float[] _rowPctBuf = System.Array.Empty<float>();
     private float[] _basePctBuf = System.Array.Empty<float>();
     private readonly Vector3[] _sceneCorners = new Vector3[4];
+    private static readonly string PREF_WYSI_BADGES = "Ux_WYSI_Badges";
+    private readonly HashSet<Ux_TonkersTableTopiaCell> _selectedCellSetScratch = new HashSet<Ux_TonkersTableTopiaCell>(64);
+    private readonly Dictionary<System.Type, int> _badgeCountsScratch = new Dictionary<System.Type, int>(8);
+    private float[] _previewScaledColBuf = System.Array.Empty<float>();
+    private float[] _previewScaledRowBuf = System.Array.Empty<float>();
 
     private static readonly Dictionary<System.Type, GUIContent> _badgeIconCache = new Dictionary<System.Type, GUIContent>(16);
 
@@ -553,14 +559,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 EditorPrefs.SetBool("TTT_TableImg", newTblImgToggle);
                 if (!newTblImgToggle)
                 {
-                    var imgNow = table != null ? table.GetComponent<Image>() : null;
-                    if (imgNow != null && imgNow.sprite != null)
-                    {
-                        Undo.RecordObject(table, "Clear Table Background");
-                        table.ClearTableBackgroundImage();
-                        table.FlagLayoutAsNeedingSpaDay();
-                        EditorUtility.SetDirty(table);
-                    }
+                    Undo.RecordObject(table, "Clear Table Background Image");
+                    table.ClearTableBackgroundImage();
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
                 }
             }
 
@@ -569,42 +571,33 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 var img = table != null ? table.GetComponent<Image>() : null;
                 var curSprite = img != null ? img.sprite : null;
                 var curTint = img != null ? img.color : Color.white;
+                bool curSliced = img != null && img.type == Image.Type.Sliced;
 
                 EditorGUI.BeginChangeCheck();
                 var newSprite = (Sprite)EditorGUILayout.ObjectField("Background Image", curSprite, typeof(Sprite), false);
                 if (EditorGUI.EndChangeCheck())
                 {
                     Undo.RecordObject(table, "Set Table Background Image");
-                    if (newSprite != null)
-                    {
-                        table.SetTableBackgroundImage(newSprite, curTint);
-                    }
-                    else
-                    {
-                        table.ClearTableBackgroundImage();
-                    }
+                    if (newSprite != null) table.SetTableBackgroundImage(newSprite, curTint, curSliced);
+                    else table.ClearTableBackgroundImage();
                     table.FlagLayoutAsNeedingSpaDay();
                     EditorUtility.SetDirty(table);
                 }
 
-                var hasSprite = (newSprite != null) || (curSprite != null);
-                if (hasSprite)
+                var liveImg = table != null ? table.GetComponent<Image>() : null;
+                var liveSprite = liveImg != null ? liveImg.sprite : null;
+                var liveTint = liveImg != null ? liveImg.color : Color.white;
+                bool liveSliced = liveImg != null && liveImg.type == Image.Type.Sliced;
+
+                if (liveSprite != null)
                 {
                     EditorGUI.BeginChangeCheck();
-                    var newTint = EditorGUILayout.ColorField("Tint Color", curSprite != null ? curTint : Color.white);
+                    var newTint = EditorGUILayout.ColorField("Tint Color", liveTint);
+                    bool newSliced = EditorGUILayout.Toggle("Sliced", liveSliced);
                     if (EditorGUI.EndChangeCheck())
                     {
-                        var liveImg = table != null ? table.GetComponent<Image>() : null;
-                        var liveSprite = liveImg != null ? liveImg.sprite : null;
-                        Undo.RecordObject(table, "Set Table Background Tint");
-                        if (liveSprite != null)
-                        {
-                            table.SetTableBackgroundImage(liveSprite, newTint);
-                        }
-                        else
-                        {
-                            table.ClearTableBackgroundImage();
-                        }
+                        Undo.RecordObject(table, "Set Table Background Style");
+                        table.SetTableBackgroundImage(liveSprite, newTint, newSliced);
                         table.FlagLayoutAsNeedingSpaDay();
                         EditorUtility.SetDirty(table);
                     }
@@ -739,7 +732,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
             bool imgToggle = EditorPrefs.GetBool("TTT_CellImg_Wysi", false);
             bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
-            if (newImgToggle != imgToggle) EditorPrefs.SetBool("TTT_CellImg_Wysi", newImgToggle);
+            if (newImgToggle != imgToggle)
+            {
+                EditorPrefs.SetBool("TTT_CellImg_Wysi", newImgToggle);
+                if (!newImgToggle)
+                {
+                    EnsureObjectBuffer(cells.Count);
+                    for (int i = 0; i < cells.Count; i++) _objScratch[i] = cells[i];
+                    Undo.RecordObjects(_objScratch, "Clear Cell Background");
+                    for (int i = 0; i < cells.Count; i++) cells[i].backgroundPictureBecausePlainIsLame = null;
+                    table.FlagLayoutAsNeedingSpaDay();
+                    EditorUtility.SetDirty(table);
+                }
+            }
 
             if (newImgToggle)
             {
@@ -747,7 +752,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 bool mixedSprite = false;
                 for (int i = 1; i < cells.Count; i++)
                 {
-                    if (cells[i].backgroundPictureBecausePlainIsLame != firstSprite) { mixedSprite = true; break; }
+                    if (cells[i].backgroundPictureBecausePlainIsLame != firstSprite)
+                    {
+                        mixedSprite = true;
+                        break;
+                    }
                 }
 
                 EditorGUI.BeginChangeCheck();
@@ -764,34 +773,56 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     EditorUtility.SetDirty(table);
                 }
 
-                bool anySpriteNow = (newSprite != null);
-                if (!anySpriteNow)
+                bool anySpriteNow = false;
+                for (int i = 0; i < cells.Count; i++)
                 {
-                    for (int i = 0; i < cells.Count; i++)
+                    if (cells[i].backgroundPictureBecausePlainIsLame != null)
                     {
-                        if (cells[i].backgroundPictureBecausePlainIsLame != null) { anySpriteNow = true; break; }
+                        anySpriteNow = true;
+                        break;
                     }
                 }
 
                 if (anySpriteNow)
                 {
+                    bool firstSliced = cells[0].backgroundPictureUseSlicedLikePizza;
+                    bool mixedSliced = false;
+                    for (int i = 1; i < cells.Count; i++)
+                    {
+                        if (cells[i].backgroundPictureUseSlicedLikePizza != firstSliced)
+                        {
+                            mixedSliced = true;
+                            break;
+                        }
+                    }
+
                     Color firstColor = cells[0].backgroundColorLikeASunset;
                     bool mixedColor = false;
                     for (int i = 1; i < cells.Count; i++)
                     {
-                        if (cells[i].backgroundColorLikeASunset != firstColor) { mixedColor = true; break; }
+                        if (cells[i].backgroundColorLikeASunset != firstColor)
+                        {
+                            mixedColor = true;
+                            break;
+                        }
                     }
 
                     EditorGUI.BeginChangeCheck();
                     EditorGUI.showMixedValue = mixedColor;
                     var newColor = EditorGUILayout.ColorField("Cell Color", firstColor);
+                    EditorGUI.showMixedValue = mixedSliced;
+                    bool newSliced = EditorGUILayout.Toggle("Sliced", firstSliced);
                     EditorGUI.showMixedValue = false;
                     if (EditorGUI.EndChangeCheck())
                     {
                         EnsureObjectBuffer(cells.Count);
                         for (int i = 0; i < cells.Count; i++) _objScratch[i] = cells[i];
-                        Undo.RecordObjects(_objScratch, "Edit Cell Color");
-                        for (int i = 0; i < cells.Count; i++) cells[i].backgroundColorLikeASunset = newColor;
+                        Undo.RecordObjects(_objScratch, "Edit Cell Background Style");
+                        for (int i = 0; i < cells.Count; i++)
+                        {
+                            cells[i].backgroundColorLikeASunset = newColor;
+                            cells[i].backgroundPictureUseSlicedLikePizza = newSliced;
+                        }
                         table.FlagLayoutAsNeedingSpaDay();
                         EditorUtility.SetDirty(table);
                     }
@@ -812,16 +843,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         table.SyncColumnWardrobes();
         var col = table.fancyColumnWardrobes[cIdx];
-
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField($"Column {cIdx + 1}", EditorStyles.boldLabel);
-
             bool manualCols = EditorPrefs.GetBool("TTT_ManualCols", false);
             EditorGUI.BeginChangeCheck();
             manualCols = EditorGUILayout.Toggle("Fixed Widths", manualCols);
             EditorPrefs.SetBool("TTT_ManualCols", manualCols);
-
             if (manualCols)
             {
                 float px = Mathf.Max(0f, col.requestedWidthMaybePercentIfNegative > 0f ? col.requestedWidthMaybePercentIfNegative : 0f);
@@ -837,13 +865,20 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
             bool imgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
             bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
-            if (newImgToggle != imgToggle) EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newImgToggle);
+            if (newImgToggle != imgToggle)
+            {
+                EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newImgToggle);
+                if (!newImgToggle) col.backdropPictureOnTheHouse = null;
+            }
+
             if (newImgToggle)
             {
                 col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", col.backdropPictureOnTheHouse, typeof(Sprite), false);
                 if (col.backdropPictureOnTheHouse != null)
                 {
                     col.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", col.backdropTintFlavor);
+                    col.backdropUseSlicedLikePizza = EditorGUILayout.Toggle("Sliced", col.backdropUseSlicedLikePizza);
+                    col.useOneBigBackdropForWholeColumn = EditorGUILayout.Toggle("Use One Stretched BG", col.useOneBigBackdropForWholeColumn);
                 }
             }
 
@@ -868,6 +903,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void DrawGrid(Rect grid, float[] colW, float[] rowH)
     {
         bool isResizing = dragCol >= 0 || dragRow >= 0;
+        bool previewBadgesEnabled = EditorPrefs.GetBool(PREF_WYSI_BADGES, true);
+
         var e = Event.current;
         bool hasRect = HasRectSelection();
         int selR0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
@@ -877,6 +914,9 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         bool canMerge = hasRect && table != null && table.CanMergeThisPicnicBlanket(selR0, selC0, selRCount, selCCount);
         bool canUnmerge = hasRect && table != null && table.CanUnmergeThisFoodFight(selR0, selC0, selRCount, selCCount);
 
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
+
         float y = grid.y;
         for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++)
         {
@@ -885,12 +925,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             {
                 if (!IsTopLeft(r, c, out var spanR, out var spanC))
                 {
-                    x += colW[c] + table.sociallyDistancedColumnsPixels;
+                    x += colW[c] + colGap;
                     continue;
                 }
-                float w = Sum(colW, c, spanC) + table.sociallyDistancedColumnsPixels * (spanC - 1);
-                float h = Sum(rowH, r, spanR) + table.sociallyDistancedRowsPixels * (spanR - 1);
+
+                float w = Sum(colW, c, spanC) + colGap * (spanC - 1);
+                float h = Sum(rowH, r, spanR) + rowGap * (spanR - 1);
                 var cellRect = new Rect(x, y, w, h);
+                var cellComp = table.GrabCellLikeItOwesYouRent(r, c);
+
+                if (cellComp != null) DrawCellPreviewBackgroundLikePoster(cellRect, cellComp);
 
                 Handles.color = gridLine;
                 Handles.DrawAAPolyLine(1.5f, new Vector3(cellRect.xMin, cellRect.yMin), new Vector3(cellRect.xMax, cellRect.yMin));
@@ -910,11 +954,15 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
                 bool hasChildTable = table.TryFindChildTableInCellLikeSherlock(r, c, out var childTbl);
 
-                var snackCounts = new Dictionary<System.Type, int>(8);
-                table.ScoutUiSnackCountsInCellLikeBeanCounter(r, c, snackCounts, true);
-                BuildCellBadgeGuiLikeScoutPatches(snackCounts, hasChildTable, _badgesScratch);
-                if (_badgesScratch.Count > 0) DrawCellBadgesLikeFlair(cellRect, _badgesScratch, r, c);
-                _badgesScratch.Clear();
+                if (previewBadgesEnabled)
+                {
+                    table.ScoutUiSnackCountsInCellLikeBeanCounter(r, c, _badgeCountsScratch, true);
+                    BuildCellBadgeGuiLikeScoutPatches(_badgeCountsScratch, hasChildTable, _badgesScratch);
+
+                    if (_badgesScratch.Count > 0) DrawCellBadgesLikeFlair(cellRect, _badgesScratch, r, c);
+
+                    _badgesScratch.Clear();
+                }
 
                 if (!isResizing && e.type == EventType.MouseDown && e.button == 0 && cellRect.Contains(e.mousePosition))
                 {
@@ -941,22 +989,31 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         {
                             if (e.shift && selRow >= 0 && selCol >= 0)
                             {
-                                selRow2 = r; selCol2 = c;
+                                selRow2 = r;
+                                selCol2 = c;
                             }
                             else
                             {
-                                selRow = r; selCol = c; selRow2 = r; selCol2 = c;
+                                selRow = r;
+                                selCol = c;
+                                selRow2 = r;
+                                selCol2 = c;
                             }
-                            headerRowBigEnchilada = -1; headerColBigEnchilada = -1;
+
+                            if (actionMode == EditorActionMode.HighlightCells) highlightDragActive = true;
+
+                            headerRowBigEnchilada = -1;
+                            headerColBigEnchilada = -1;
+
                             if (actionMode == EditorActionMode.SelectObjects)
                             {
-                                var cell = table.GrabCellLikeItOwesYouRent(r, c);
-                                if (cell != null && !cell.isMashedLikePotatoes)
+                                if (cellComp != null && !cellComp.isMashedLikePotatoes)
                                 {
-                                    Selection.activeTransform = cell.transform;
-                                    EditorGUIUtility.PingObject(cell);
+                                    Selection.activeTransform = cellComp.transform;
+                                    EditorGUIUtility.PingObject(cellComp);
                                 }
                             }
+
                             e.Use();
                             Repaint();
                             RepaintSceneViewLikeABobRoss();
@@ -968,14 +1025,25 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 if (!overHandle && cellRect.Contains(e.mousePosition) && ((e.type == EventType.MouseDown && e.button == 1) || e.type == EventType.ContextClick))
                 {
                     Ux_TonkersTableTopiaContextMenuGravyBoat.ShowForCell(
-                        table, r, c, spanR, spanC, canMerge, canUnmerge, selR0, selC0, selRCount, selCCount);
+                        table,
+                        r,
+                        c,
+                        spanR,
+                        spanC,
+                        canMerge,
+                        canUnmerge,
+                        selR0,
+                        selC0,
+                        selRCount,
+                        selCCount);
                     e.Use();
                     Repaint();
                 }
 
-                x += colW[c] + table.sociallyDistancedColumnsPixels;
+                x += colW[c] + colGap;
             }
-            y += rowH[r] + table.sociallyDistancedRowsPixels;
+
+            y += rowH[r] + rowGap;
         }
 
         DrawResizeHandles(grid, colW, rowH);
@@ -1000,17 +1068,18 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void DrawHeaders(Rect top, Rect left, float[] colW, float[] rowH)
     {
         var e = Event.current;
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
 
         var x = top.x;
         for (int c = 0; c < colW.Length; c++)
         {
             var r = new Rect(x, top.y, colW[c], top.height);
             EditorGUI.LabelField(r, (c + 1).ToString(), EditorStyles.centeredGreyMiniLabel);
-
             Handles.color = gridLine;
             Handles.DrawLine(
-                new Vector3(r.xMax + table.sociallyDistancedColumnsPixels * 0.5f, r.yMin),
-                new Vector3(r.xMax + table.sociallyDistancedColumnsPixels * 0.5f, r.yMax));
+                new Vector3(r.xMax + colGap * 0.5f, r.yMin),
+                new Vector3(r.xMax + colGap * 0.5f, r.yMax));
 
             if (e.type == EventType.MouseDown && e.button == 0 && r.Contains(e.mousePosition))
             {
@@ -1030,7 +1099,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            x += colW[c] + table.sociallyDistancedColumnsPixels;
+            x += colW[c] + colGap;
         }
 
         var y = left.y;
@@ -1038,11 +1107,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             var rr = new Rect(left.x, y, left.width, rowH[rI]);
             EditorGUI.LabelField(rr, (rI + 1).ToString(), EditorStyles.centeredGreyMiniLabel);
-
             Handles.color = gridLine;
             Handles.DrawLine(
-                new Vector3(rr.xMin, rr.yMax + table.sociallyDistancedRowsPixels * 0.5f),
-                new Vector3(rr.xMax, rr.yMax + table.sociallyDistancedRowsPixels * 0.5f));
+                new Vector3(rr.xMin, rr.yMax + rowGap * 0.5f),
+                new Vector3(rr.xMax, rr.yMax + rowGap * 0.5f));
 
             if (e.type == EventType.MouseDown && e.button == 0 && rr.Contains(e.mousePosition))
             {
@@ -1062,7 +1130,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            y += rowH[rI] + table.sociallyDistancedRowsPixels;
+            y += rowH[rI] + rowGap;
         }
     }
 
@@ -1072,11 +1140,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
         var e = Event.current;
         float grab = 6f;
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
 
         float x = grid.x;
         for (int c = 0; c < table.totalColumnsCountHighFive - 1; c++)
         {
-            float splitX = x + colW[c] + table.sociallyDistancedColumnsPixels * 0.5f;
+            float splitX = x + colW[c] + colGap * 0.5f;
             var handle = new Rect(splitX - grab * 0.5f, grid.y, grab, grid.height);
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeHorizontal);
 
@@ -1102,13 +1172,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            x += colW[c] + table.sociallyDistancedColumnsPixels;
+            x += colW[c] + colGap;
         }
 
         float y = grid.y;
         for (int r = 0; r < table.totalRowsCountLetTheShowBegin - 1; r++)
         {
-            float splitY = y + rowH[r] + table.sociallyDistancedRowsPixels * 0.5f;
+            float splitY = y + rowH[r] + rowGap * 0.5f;
             var handle = new Rect(grid.x, splitY - grab * 0.5f, grid.width, grab);
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeVertical);
 
@@ -1134,7 +1204,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 Repaint();
             }
 
-            y += rowH[r] + table.sociallyDistancedRowsPixels;
+            y += rowH[r] + rowGap;
         }
     }
 
@@ -1179,16 +1249,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         table.SyncRowWardrobes();
         var row = table.snazzyRowWardrobes[rIdx];
-
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField($"Row {rIdx + 1}", EditorStyles.boldLabel);
-
             bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
             EditorGUI.BeginChangeCheck();
             manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
             EditorPrefs.SetBool("TTT_ManualRows", manualRows);
-
             if (manualRows)
             {
                 float px = Mathf.Max(0f, row.requestedHeightMaybePercentIfNegative > 0f ? row.requestedHeightMaybePercentIfNegative : 0f);
@@ -1204,13 +1271,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
             bool imgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
             bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
-            if (newImgToggle != imgToggle) EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newImgToggle);
+            if (newImgToggle != imgToggle)
+            {
+                EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newImgToggle);
+                if (!newImgToggle) row.backdropPictureOnTheHouse = null;
+            }
+
             if (newImgToggle)
             {
                 row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", row.backdropPictureOnTheHouse, typeof(Sprite), false);
                 if (row.backdropPictureOnTheHouse != null)
                 {
                     row.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", row.backdropTintFlavor);
+                    row.backdropUseSlicedLikePizza = EditorGUILayout.Toggle("Sliced", row.backdropUseSlicedLikePizza);
                 }
             }
 
@@ -1525,8 +1598,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
             table.sociallyDistancedColumnsPixels,
             innerW,
-            ref _previewColBuf
-        );
+            ref _previewColBuf);
 
         EnsureFloatBuffer(ref _previewRowBuf, rows);
         Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
@@ -1534,8 +1606,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
             table.sociallyDistancedRowsPixels,
             innerH,
-            ref _previewRowBuf
-        );
+            ref _previewRowBuf);
 
         for (int c = 0; c < _previewColBuf.Length; c++) if (_previewColBuf[c] < 1f) _previewColBuf[c] = 1f;
         for (int r = 0; r < _previewRowBuf.Length; r++) if (_previewRowBuf[r] < 1f) _previewRowBuf[r] = 1f;
@@ -1548,39 +1619,69 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         for (int r = 0; r < rows; r++) natH += _previewRowBuf[r];
         if (rows > 1) natH += table.sociallyDistancedRowsPixels * (rows - 1);
 
-        float headerH = 22f;
-        float headerW = 34f;
+        const float headerH = 22f;
+        const float headerW = 34f;
+        const string prefZoom = "Ux_Wysi_Zoom";
+        const string prefScrollX = "Ux_Wysi_ScrollX";
+        const string prefScrollY = "Ux_Wysi_ScrollY";
 
-        float hZoom = Mathf.Clamp(EditorPrefs.GetFloat("Ux_HZoom", 1f), 0.25f, 3f);
-        float vZoomBase = EditorPrefs.GetFloat("Ux_VZoom", 1f);
-        float vZoomLive = EditorPrefs.GetFloat("Ux_VZoom_FreeLive", vZoomBase);
-        bool vzoomDraggingNow = EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1;
-        if (!vzoomDraggingNow && Mathf.Abs(vZoomLive - vZoomBase) > 0.0001f)
+        float zoom = CurrentWysiZoomLikeCameraLens();
+        float fitZoom = Mathf.Clamp((Mathf.Max(1f, EditorGUIUtility.currentViewWidth - headerW - 52f)) / Mathf.Max(1f, natW), 0.25f, 3f);
+        bool zoomChangedByButton = false;
+        bool showBadges = EditorPrefs.GetBool(PREF_WYSI_BADGES, true);
+
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
-            vZoomLive = vZoomBase;
-            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", vZoomLive);
+            GUILayout.Label("Zoom", GUILayout.Width(36f));
+
+            EditorGUI.BeginChangeCheck();
+            zoom = GUILayout.HorizontalSlider(zoom, 0.05f, 3f);
+            zoom = Mathf.Clamp(EditorGUILayout.FloatField(zoom, GUILayout.Width(48f)), 0.05f, 3f);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetFloat(prefZoom, zoom);
+
+            if (GUILayout.Button("Fit", GUILayout.Width(42f)))
+            {
+                zoom = fitZoom;
+                zoomChangedByButton = true;
+            }
+
+            if (GUILayout.Button("1:1", GUILayout.Width(42f)))
+            {
+                zoom = 1f;
+                zoomChangedByButton = true;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            showBadges = EditorGUILayout.ToggleLeft("Badges", showBadges, GUILayout.Width(70f));
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetBool(PREF_WYSI_BADGES, showBadges);
         }
-        float vZoom = Mathf.Max(0.001f, vZoomLive);
 
-        float requestedW = Mathf.Max(1f, natW * hZoom);
-        float contentH = Mathf.Max(1f, natH * vZoom);
+        if (zoomChangedByButton) EditorPrefs.SetFloat(prefZoom, zoom);
+
+        float contentW = Mathf.Max(1f, natW * zoom);
+        float contentH = Mathf.Max(1f, natH * zoom);
+        float totalW = headerW + contentW;
         float totalH = headerH + contentH;
+        float viewportH = Mathf.Clamp(totalH + 6f, 180f, 560f);
 
-        Rect previewRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(totalH), GUILayout.ExpandWidth(true));
-        float availW = Mathf.Max(1f, previewRect.width - headerW - 6f);
-        float appliedScaleX = (natW > 0f) ? Mathf.Min(hZoom, availW / natW) : hZoom;
-        float contentW = Mathf.Min(natW * appliedScaleX, availW);
+        Vector2 scroll = new Vector2(EditorPrefs.GetFloat(prefScrollX, 0f), EditorPrefs.GetFloat(prefScrollY, 0f));
+        scroll = EditorGUILayout.BeginScrollView(scroll, GUILayout.Height(viewportH));
+
+        Rect previewRect = GUILayoutUtility.GetRect(totalW, totalH, GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
+
+        EditorPrefs.SetFloat(prefScrollX, scroll.x);
+        EditorPrefs.SetFloat(prefScrollY, scroll.y);
 
         Rect headRowRect = new Rect(previewRect.x + headerW, previewRect.y, contentW, headerH);
         Rect headColRect = new Rect(previewRect.x, previewRect.y + headerH, headerW, contentH);
         Rect headCornerRect = new Rect(previewRect.x, previewRect.y, headerW, headerH);
         Rect gridRect = new Rect(previewRect.x + headerW, previewRect.y + headerH, contentW, contentH);
 
-        float[] colW = new float[cols];
-        for (int c = 0; c < cols; c++) colW[c] = _previewColBuf[c] * appliedScaleX;
+        EnsureFloatBuffer(ref _previewScaledColBuf, cols);
+        for (int c = 0; c < cols; c++) _previewScaledColBuf[c] = _previewColBuf[c] * zoom;
 
-        float[] rowH = new float[rows];
-        for (int r = 0; r < rows; r++) rowH[r] = _previewRowBuf[r] * vZoom;
+        EnsureFloatBuffer(ref _previewScaledRowBuf, rows);
+        for (int r = 0; r < rows; r++) _previewScaledRowBuf[r] = _previewRowBuf[r] * zoom;
 
         LoadPreviewColors(out var wysiRowA, out var wysiRowB, out var wysiHeader);
 
@@ -1592,62 +1693,38 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         float bandY = gridRect.y;
         for (int r = 0; r < rows; r++)
         {
-            float h = rowH[r];
+            float h = _previewScaledRowBuf[r];
             var bandRect = new Rect(gridRect.x, bandY, gridRect.width, h);
             EditorGUI.DrawRect(bandRect, ((r & 1) == 0) ? wysiRowA : wysiRowB);
-            bandY += h + table.sociallyDistancedRowsPixels;
+            bandY += h + table.sociallyDistancedRowsPixels * zoom;
         }
+
+        DrawColumnBackdropOverlaysLikeWallpaperCrew(gridRect, _previewScaledColBuf);
+        DrawRowBackdropOverlaysLikeWallpaperCrew(gridRect, _previewScaledRowBuf);
 
         Handles.color = gridLine;
         Handles.DrawAAPolyLine(2f, new Vector3(previewRect.x, previewRect.y + headerH), new Vector3(previewRect.x + previewRect.width, previewRect.y + headerH));
         Handles.DrawAAPolyLine(2f, new Vector3(previewRect.x + headerW, previewRect.y), new Vector3(previewRect.x + headerW, previewRect.y + previewRect.height));
 
-        DrawHeaders(headRowRect, headColRect, colW, rowH);
-        DrawGrid(gridRect, colW, rowH);
+        DrawHeaders(headRowRect, headColRect, _previewScaledColBuf, _previewScaledRowBuf);
+        DrawGrid(gridRect, _previewScaledColBuf, _previewScaledRowBuf);
 
         _lastGridRect = gridRect;
         _lastInnerWidth = innerW;
         _lastInnerHeight = innerH;
 
         var e = Event.current;
-
-        Rect vzoomGrabbyMcHandle = new Rect(gridRect.x, gridRect.yMax - 4f, gridRect.width, 8f);
-        EditorGUIUtility.AddCursorRect(vzoomGrabbyMcHandle, MouseCursor.ResizeVertical);
-        EditorGUI.DrawRect(vzoomGrabbyMcHandle, new Color(0f, 0f, 0f, 0.08f));
-        var grip = new Rect(vzoomGrabbyMcHandle.x + vzoomGrabbyMcHandle.width * 0.5f - 16f, vzoomGrabbyMcHandle.y + 1f, 32f, 2f);
-        EditorGUI.DrawRect(grip, new Color(0f, 0f, 0f, 0.25f));
-
-        if (e.type == EventType.MouseDown && e.button == 0 && vzoomGrabbyMcHandle.Contains(e.mousePosition))
+        if ((e.control || e.command) && e.type == EventType.ScrollWheel && previewRect.Contains(e.mousePosition))
         {
-            EditorPrefs.SetInt("Ux_VZoom_Dragging", 1);
-            EditorPrefs.SetFloat("Ux_VZoom_StartMouse", e.mousePosition.y);
-            EditorPrefs.SetFloat("Ux_VZoom_StartValue", vZoom);
-            GUIUtility.hotControl = GUIUtility.GetControlID(FocusType.Passive);
-            e.Use();
-            Repaint();
-        }
-
-        if (EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1 && e.type == EventType.MouseDrag)
-        {
-            float startMouse = EditorPrefs.GetFloat("Ux_VZoom_StartMouse", e.mousePosition.y);
-            float startV = EditorPrefs.GetFloat("Ux_VZoom_StartValue", vZoom);
-            float dy = e.mousePosition.y - startMouse;
-            float newV = startV + dy / Mathf.Max(1f, natH);
-            if (newV < 0.001f) newV = 0.001f;
-            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", newV);
-            vZoom = newV;
-            e.Use();
-            Repaint();
-        }
-
-        if (EditorPrefs.GetInt("Ux_VZoom_Dragging", 0) == 1 && e.type == EventType.MouseUp)
-        {
-            EditorPrefs.SetInt("Ux_VZoom_Dragging", 0);
-            EditorPrefs.SetFloat("Ux_VZoom", vZoom);
-            EditorPrefs.SetFloat("Ux_VZoom_FreeLive", vZoom);
-            GUIUtility.hotControl = 0;
-            e.Use();
-            Repaint();
+            float oldZoom = zoom;
+            float factor = e.delta.y > 0f ? 0.9f : 1.1f;
+            zoom = Mathf.Clamp(oldZoom * factor, 0.05f, 3f);
+            if (Mathf.Abs(zoom - oldZoom) > 0.0001f)
+            {
+                EditorPrefs.SetFloat(prefZoom, zoom);
+                e.Use();
+                Repaint();
+            }
         }
 
         if (e.type == EventType.MouseDown && e.button == 0 && headCornerRect.Contains(e.mousePosition))
@@ -1665,6 +1742,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             e.Use();
             Repaint();
         }
+
+        EditorGUILayout.EndScrollView();
     }
 
     private void DrawWysiwygPreviewColorPrefs()
@@ -1744,30 +1823,57 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private List<Ux_TonkersTableTopiaCell> GetSelectedCellsHotAndReady()
     {
         _selectedCellsScratch.Clear();
+        _selectedCellSetScratch.Clear();
+
         if (!HasSelection()) return _selectedCellsScratch;
 
-        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
-        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+        int r0 = Mathf.Min(selRow, selRow2);
+        int r1 = Mathf.Max(selRow, selRow2);
+        int c0 = Mathf.Min(selCol, selCol2);
+        int c1 = Mathf.Max(selCol, selCol2);
 
         for (int r = r0; r <= r1; r++)
         {
             for (int c = c0; c <= c1; c++)
             {
-                var cell = table.GrabCellLikeItOwesYouRent(r, c);
-                if (cell != null) _selectedCellsScratch.Add(cell);
+                if (!table.TryPeekMainCourseLikeABuffet(r, c, out _, out _, out var cell)) continue;
+                if (cell == null) continue;
+                if (_selectedCellSetScratch.Add(cell)) _selectedCellsScratch.Add(cell);
             }
         }
+
         return _selectedCellsScratch;
     }
 
     private void HandleGridInput(Rect grid, float[] colW, float[] rowH)
     {
         var e = Event.current;
+        if (actionMode != EditorActionMode.HighlightCells) highlightDragActive = false;
 
         HandleHierarchyDragIntoGrid(grid, colW, rowH);
 
+        if (highlightDragActive && actionMode == EditorActionMode.HighlightCells && e.type == EventType.MouseDrag)
+        {
+            int tr, tc;
+            Rect dummy;
+            if (GetCellAtMouseLikeHawk(grid, colW, rowH, e.mousePosition, out tr, out tc, out dummy))
+            {
+                selRow2 = tr;
+                selCol2 = tc;
+                headerRowBigEnchilada = -1;
+                headerColBigEnchilada = -1;
+                Repaint();
+                RepaintSceneViewLikeABobRoss();
+            }
+
+            e.Use();
+            return;
+        }
+
         if (e.type == EventType.MouseUp)
         {
+            highlightDragActive = false;
+
             if (dragCol >= 0 || dragRow >= 0)
             {
                 dragCol = -1;
@@ -1787,9 +1893,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         int srcMainR, srcMainC;
                         Ux_TonkersTableTopiaCell srcMain;
                         table.TryPeekMainCourseLikeABuffet(moveSrcRow, moveSrcCol, out srcMainR, out srcMainC, out srcMain);
+
                         int dstMainR, dstMainC;
                         Ux_TonkersTableTopiaCell dstMain;
                         table.TryPeekMainCourseLikeABuffet(tr, tc, out dstMainR, out dstMainC, out dstMain);
+
                         var srcRT = table.FetchCellRectTransformVIP(srcMainR, srcMainC);
                         var dstRT = table.FetchCellRectTransformVIP(dstMainR, dstMainC);
                         if (srcRT != null && dstRT != null && srcRT != dstRT && dstRT.gameObject.activeInHierarchy)
@@ -1801,11 +1909,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                                 table.MoveForeignKidsLikeABoxTruck(srcRT, dstRT);
                                 moved = true;
                             }
+
                             if (table.MoveNestedTablesLikeACaravan(srcRT, dstRT))
                             {
                                 if (!moved) Undo.RecordObject(table, "Move Nested Table");
                                 moved = true;
                             }
+
                             if (moved)
                             {
                                 table.FlagLayoutAsNeedingSpaDay();
@@ -1814,8 +1924,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                         }
                     }
                 }
+
                 moveDragActive = false;
-                moveSrcRow = moveSrcCol = -1;
+                moveSrcRow = -1;
+                moveSrcCol = -1;
                 e.Use();
                 Repaint();
             }
@@ -1828,6 +1940,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 ResizeColWithMouse(grid);
                 e.Use();
             }
+
             if (dragRow >= 0)
             {
                 ResizeRowWithMouse(grid);
@@ -1835,10 +1948,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             }
         }
 
-        if (moveDragActive && e.type == EventType.MouseMove)
-        {
-            Repaint();
-        }
+        if (moveDragActive && e.type == EventType.MouseMove) Repaint();
     }
 
     private bool HasRectSelection()
@@ -1949,23 +2059,25 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         var e = Event.current;
         float grab = 6f;
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
 
         float x = grid.x;
         for (int c = 0; c < table.totalColumnsCountHighFive - 1; c++)
         {
-            float splitX = x + colW[c] + table.sociallyDistancedColumnsPixels * 0.5f;
+            float splitX = x + colW[c] + colGap * 0.5f;
             var handle = new Rect(splitX - grab * 0.5f, grid.y, grab, grid.height);
             if (handle.Contains(e.mousePosition)) return true;
-            x += colW[c] + table.sociallyDistancedColumnsPixels;
+            x += colW[c] + colGap;
         }
 
         float y = grid.y;
         for (int r = 0; r < table.totalRowsCountLetTheShowBegin - 1; r++)
         {
-            float splitY = y + rowH[r] + table.sociallyDistancedRowsPixels * 0.5f;
+            float splitY = y + rowH[r] + rowGap * 0.5f;
             var handle = new Rect(grid.x, splitY - grab * 0.5f, grid.width, grab);
             if (handle.Contains(e.mousePosition)) return true;
-            y += rowH[r] + table.sociallyDistancedRowsPixels;
+            y += rowH[r] + rowGap;
         }
 
         return false;
@@ -1977,6 +2089,12 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         _cachedTableRT = table != null ? table.GetComponent<RectTransform>() : null;
         EnsureDefaultSelection();
         actionMode = (EditorActionMode)EditorPrefs.GetInt(PREF_ActionMode, (int)EditorActionMode.HighlightCells);
+        highlightDragActive = false;
+        dragCol = -1;
+        dragRow = -1;
+        moveDragActive = false;
+        moveSrcRow = -1;
+        moveSrcCol = -1;
     }
 
     private void OnSceneGUI()
@@ -2253,8 +2371,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private bool GetCellAtMouseLikeHawk(Rect grid, float[] colW, float[] rowH, Vector2 mouse, out int r, out int c, out Rect cellRect)
     {
-        r = -1; c = -1; cellRect = new Rect();
+        r = -1;
+        c = -1;
+        cellRect = new Rect();
         if (!grid.Contains(mouse)) return false;
+
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
 
         float y = grid.y;
         for (int ri = 0; ri < table.totalRowsCountLetTheShowBegin; ri++)
@@ -2262,9 +2385,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             float x = grid.x;
             for (int ci = 0; ci < table.totalColumnsCountHighFive; ci++)
             {
-                float w = colW[ci];
-                float h = rowH[ri];
+                if (!IsTopLeft(ri, ci, out var spanR, out var spanC))
+                {
+                    x += colW[ci] + colGap;
+                    continue;
+                }
+
+                float w = Sum(colW, ci, spanC) + colGap * (spanC - 1);
+                float h = Sum(rowH, ri, spanR) + rowGap * (spanR - 1);
                 var rct = new Rect(x, y, w, h);
+
                 if (rct.Contains(mouse))
                 {
                     r = ri;
@@ -2272,10 +2402,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     cellRect = rct;
                     return true;
                 }
-                x += w + table.sociallyDistancedColumnsPixels;
+
+                x += colW[ci] + colGap;
             }
-            y += rowH[ri] + table.sociallyDistancedRowsPixels;
+
+            y += rowH[ri] + rowGap;
         }
+
         return false;
     }
 
@@ -2316,8 +2449,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private void StartMoveDragLikeAUhaul(int r, int c)
     {
-        moveSrcRow = r;
-        moveSrcCol = c;
+        if (table != null && table.TryPeekMainCourseLikeABuffet(r, c, out var mainRow, out var mainCol, out _))
+        {
+            moveSrcRow = mainRow;
+            moveSrcCol = mainCol;
+        }
+        else
+        {
+            moveSrcRow = r;
+            moveSrcCol = c;
+        }
+
         moveDragActive = true;
     }
 
@@ -2570,5 +2712,101 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             e.Use();
         }
+    }
+
+    private static float CurrentWysiZoomLikeCameraLens()
+    {
+        return Mathf.Clamp(EditorPrefs.GetFloat("Ux_Wysi_Zoom", 1f), 0.05f, 3f);
+    }
+
+    private void DrawCellPreviewBackgroundLikePoster(Rect cellRect, Ux_TonkersTableTopiaCell cell)
+    {
+        if (table == null || cell == null) return;
+        if (!table.TryResolveCellBackgroundVisualLikeSherlock(cell, out var sprite, out var tint, out _)) return;
+        DrawPreviewBackdropLikePoster(cellRect, sprite, tint);
+    }
+
+    private static Rect SpriteUvLikePassport(Sprite sprite)
+    {
+        if (sprite == null || sprite.texture == null) return new Rect(0f, 0f, 1f, 1f);
+
+        var tr = sprite.textureRect;
+        var tex = sprite.texture;
+        return new Rect(tr.x / tex.width, tr.y / tex.height, tr.width / tex.width, tr.height / tex.height);
+    }
+
+    private void DrawColumnBackdropOverlaysLikeWallpaperCrew(Rect grid, float[] colW)
+    {
+        if (table == null) return;
+
+        table.SyncColumnWardrobes();
+
+        float colGap = table.sociallyDistancedColumnsPixels * CurrentWysiZoomLikeCameraLens();
+        float x = grid.x;
+
+        for (int c = 0; c < table.totalColumnsCountHighFive; c++)
+        {
+            float width = c < colW.Length ? colW[c] : 0f;
+            var style = c < table.fancyColumnWardrobes.Count ? table.fancyColumnWardrobes[c] : null;
+
+            if (style != null && style.backdropPictureOnTheHouse != null && style.useOneBigBackdropForWholeColumn)
+            {
+                int spanCols = Mathf.Max(1, table.GetColumnBackdropSpanLikeWallpaperCrew(c));
+                int endColExclusive = Mathf.Min(table.totalColumnsCountHighFive, c + spanCols);
+
+                float backdropWidth = 0f;
+                for (int spanCol = c; spanCol < endColExclusive; spanCol++)
+                {
+                    backdropWidth += spanCol < colW.Length ? colW[spanCol] : 0f;
+                }
+
+                if (spanCols > 1) backdropWidth += colGap * (spanCols - 1);
+
+                var colRect = new Rect(x, grid.y, backdropWidth, grid.height);
+                DrawPreviewBackdropLikePoster(colRect, style.backdropPictureOnTheHouse, style.backdropTintFlavor);
+            }
+
+            x += width + colGap;
+        }
+    }
+
+    private void DrawRowBackdropOverlaysLikeWallpaperCrew(Rect grid, float[] rowH)
+    {
+        if (table == null) return;
+
+        table.SyncRowWardrobes();
+
+        float rowGap = table.sociallyDistancedRowsPixels * CurrentWysiZoomLikeCameraLens();
+        float y = grid.y;
+
+        for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++)
+        {
+            float height = r < rowH.Length ? rowH[r] : 0f;
+            var style = r < table.snazzyRowWardrobes.Count ? table.snazzyRowWardrobes[r] : null;
+
+            if (style != null && style.backdropPictureOnTheHouse != null)
+            {
+                var rowRect = new Rect(grid.x, y, grid.width, height);
+                DrawPreviewBackdropLikePoster(rowRect, style.backdropPictureOnTheHouse, style.backdropTintFlavor);
+            }
+
+            y += height + rowGap;
+        }
+    }
+
+    private static void DrawPreviewBackdropLikePoster(Rect rect, Sprite sprite, Color tint)
+    {
+        if (rect.width <= 0f || rect.height <= 0f) return;
+
+        if (sprite != null && sprite.texture != null)
+        {
+            var prev = GUI.color;
+            GUI.color = tint;
+            GUI.DrawTextureWithTexCoords(rect, sprite.texture, SpriteUvLikePassport(sprite), true);
+            GUI.color = prev;
+            return;
+        }
+
+        EditorGUI.DrawRect(rect, tint);
     }
 }
