@@ -2552,7 +2552,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         while (_managedRowsLine.Count < totalRowsCountLetTheShowBegin)
         {
             RectTransform rowRect = CreateManagedRow(_managedRowsLine.Count);
-            Ux_TonkersTableTopiaObjectUtility.SetParent(rowRect, tableRectTransformMainStage, "Add Tonkers Table Topia Row");
+            ParentTableChild(rowRect, tableRectTransformMainStage);
             _managedRowsLine.Add(rowRect);
         }
     }
@@ -2640,7 +2640,7 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
         while (_managedCellsLine.Count < totalColumnsCountHighFive)
         {
             RectTransform cellRect = CreateManagedCell(rowIndex, _managedCellsLine.Count);
-            Ux_TonkersTableTopiaObjectUtility.SetParent(cellRect, rowRect, "Add Tonkers Table Topia Cell");
+            ParentTableChild(cellRect, rowRect);
             _managedCellsLine.Add(cellRect);
         }
     }
@@ -3072,5 +3072,35 @@ public class Ux_TonkersTableTopiaLayout : MonoBehaviour
             totalRowsCountLetTheShowBegin,
             i => snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative,
             (i, value) => snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = value);
+    }
+
+    private static void ParentTableChild(RectTransform child, RectTransform parent)
+    {
+        if (child == null || parent == null)
+        {
+            return;
+        }
+
+        child.SetParent(parent, false);
+        NormalizeTableChildTransform(child);
+    }
+
+    private static void NormalizeTableChildTransform(RectTransform rectTransform)
+    {
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        rectTransform.localScale = Vector3.one;
+        rectTransform.localRotation = Quaternion.identity;
+
+        Vector3 localPosition = rectTransform.localPosition;
+        localPosition.z = 0f;
+        rectTransform.localPosition = localPosition;
+
+        Vector3 anchoredPosition3D = rectTransform.anchoredPosition3D;
+        anchoredPosition3D.z = 0f;
+        rectTransform.anchoredPosition3D = anchoredPosition3D;
     }
 }
