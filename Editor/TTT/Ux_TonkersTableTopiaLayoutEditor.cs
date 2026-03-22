@@ -2,6 +2,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using static Ux_TonkersTableTopiaContentExtensions;
+using static Ux_TonkersTableTopiaLayoutSizingExtensions;
 
 [CustomEditor(typeof(Ux_TonkersTableTopiaLayout))]
 public class Ux_TonkersTableTopiaLayoutEditor : Editor
@@ -127,6 +129,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     public override void OnInspectorGUI()
     {
         if (table == null) return;
+
         EnsureDefaultSelection();
         serializedObject.Update();
 
@@ -135,32 +138,21 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             var parent = table.FindParentTableLikeFamilyTree();
             GUI.enabled = parent != null;
             if (GUILayout.Button(parent != null ? "Up to Parent Tonkers Table" : "Top-level Tonkers Table", GUILayout.Height(26)))
+            {
                 Selection.activeObject = parent;
+            }
             GUI.enabled = true;
         }
 
-        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        DrawDesignSizeHeaderLikeBlueprint();
+
+        if (showPreview)
         {
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                showPreview = EditorGUILayout.ToggleLeft("WYSIWYG Preview", showPreview, GUILayout.Width(140));
-                sceneHighlight = EditorGUILayout.ToggleLeft("Scene Highlight", sceneHighlight, GUILayout.Width(130));
-            }
-
-            int mode = GUILayout.Toolbar((int)actionMode, _toolbarLabels, EditorStyles.miniButton);
-            if (mode != (int)actionMode)
-            {
-                actionMode = (EditorActionMode)mode;
-                EditorPrefs.SetInt(PREF_ActionMode, (int)actionMode);
-                Repaint();
-            }
-
-            DrawActionModeHelpdeskWithDadJokes();
+            DrawWysiwyg();
         }
 
         DrawTableButtonsToolbarLikeASpreadsheet();
-        if (showPreview) DrawWysiwyg();
-        if (showPreview) DrawSelectionSectionLikeDessert();
+        DrawSelectionSectionLikeDessert();
 
         EditorGUILayout.Space(6);
         DrawHeaderInspectorIfTheBossIsWatching();
@@ -175,7 +167,10 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
         EditorGUILayout.Space(4);
         showDefaultInspector = EditorGUILayout.Foldout(showDefaultInspector, "Advanced (Default Inspector)");
-        if (showDefaultInspector) DrawDefaultInspector();
+        if (showDefaultInspector)
+        {
+            DrawDefaultInspector();
+        }
 
         if (GUI.changed)
         {
@@ -218,66 +213,148 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void ApplyColResize(int splitIndex, float deltaContent)
     {
         EnsureColumnStylesSize();
+
         int left = splitIndex;
         int right = splitIndex + 1;
         if (left < 0 || right >= table.totalColumnsCountHighFive) return;
         if (startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
 
+        float innerWidth = GetCurrentInnerWidthLikeSnackTray();
+        float[] startPixels = DistributeLikeACaterer(
+            startColW.Length,
+            i => table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(startColW[i], innerWidth),
+            table.sociallyDistancedColumnsPixels,
+            innerWidth);
+
+        float duo = startPixels[left] + startPixels[right];
+        const float floor = 1f;
+        float newLeft = Mathf.Clamp(startPixels[left] + deltaContent, floor, Mathf.Max(floor, duo - floor));
+        float newRight = duo - newLeft;
+
+        var targetPixels = new float[startPixels.Length];
+        System.Array.Copy(startPixels, targetPixels, startPixels.Length);
+        targetPixels[left] = newLeft;
+        targetPixels[right] = newRight;
+
         float spacing = table.sociallyDistancedColumnsPixels * Mathf.Max(0, table.totalColumnsCountHighFive - 1);
-        float availW = Mathf.Max(1f, _lastInnerWidth - spacing);
-        float deltaPct = deltaContent / availW;
+        float fixedSum = 0f;
+        int flexCount = 0;
 
-        const float floor = 0.01f;
-        EnsureFloatBuffer(ref _basePctBuf, startColW.Length);
-        System.Array.Copy(startColW, _basePctBuf, startColW.Length);
+        for (int i = 0; i < startColW.Length; i++)
+        {
+            bool isTouched = i == left || i == right;
+            bool isFixed = startColW[i] > 0f;
+            bool staysFlex = Mathf.Approximately(startColW[i], 0f) && !isTouched;
+            if (isFixed) fixedSum += targetPixels[i];
+            if (staysFlex) flexCount++;
+        }
 
-        float l = Mathf.Clamp01(_basePctBuf[left]);
-        float r = Mathf.Clamp01(_basePctBuf[right]);
-        Ux_TonkersTableTopiaExtensions.RebalanceTwoPercentsLikeSeesaw(ref l, ref r, deltaPct, floor);
-        _basePctBuf[left] = l;
-        _basePctBuf[right] = r;
+        float availableForPercentages = Mathf.Max(0f, innerWidth - spacing - fixedSum);
+        var newSpecs = new float[startColW.Length];
 
-        for (int i = 0; i < table.totalColumnsCountHighFive; i++)
-            table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
+        for (int i = 0; i < startColW.Length; i++)
+        {
+            bool isTouched = i == left || i == right;
+            bool isFixed = startColW[i] > 0f;
+            bool staysFlex = Mathf.Approximately(startColW[i], 0f) && !isTouched;
 
-        DadHudSaveColumnsFromArraysLikeReceipt(left, right, startColW, _basePctBuf);
+            if (isFixed)
+            {
+                newSpecs[i] = table.ConvertCurrentColumnPixelsToStoredFixedLikeBlueprint(Mathf.Max(floor, targetPixels[i]), innerWidth);
+                continue;
+            }
 
+            if (staysFlex)
+            {
+                newSpecs[i] = 0f;
+                continue;
+            }
+
+            float pct = availableForPercentages > 0.0001f ? Mathf.Clamp01(targetPixels[i] / availableForPercentages) : 0f;
+            newSpecs[i] = pct > 0f ? -pct : 0f;
+        }
+
+        if (flexCount == 0) NormalizeNegativeSpecsWhenNoFlexLikeChoir(newSpecs);
+
+        for (int i = 0; i < table.totalColumnsCountHighFive; i++) table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = newSpecs[i];
+
+        DadHudSaveColumnsFromArraysLikeReceipt(left, right, startColW, newSpecs);
+        table.FlagLayoutAsNeedingSpaDay();
+        if (Application.isPlaying) table.UpdateSeatingLikeAProUsher();
         EditorUtility.SetDirty(table);
     }
 
     private void ApplyRowResize(int splitIndex, float deltaContent)
     {
         EnsureRowStylesSize();
+
         int top = splitIndex;
         int bottom = splitIndex + 1;
+        if (top < 0 || bottom >= table.totalRowsCountLetTheShowBegin) return;
+        if (startRowH == null || startRowH.Length != table.totalRowsCountLetTheShowBegin) return;
 
-        float availH = Mathf.Max(1f, _lastInnerHeight - table.sociallyDistancedRowsPixels * Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 1));
-        float deltaPct = deltaContent / availH;
+        float innerHeight = GetCurrentInnerHeightLikeSnackTray();
+        float[] startPixels = DistributeLikeACaterer(
+            startRowH.Length,
+            i => table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(startRowH[i], innerHeight),
+            table.sociallyDistancedRowsPixels,
+            innerHeight);
 
-        EnsureFloatBuffer(ref _basePctBuf, startRowH != null ? startRowH.Length : 0);
-        if (startRowH != null) System.Array.Copy(startRowH, _basePctBuf, startRowH.Length);
+        float duo = startPixels[top] + startPixels[bottom];
+        const float floor = 1f;
+        float newTop = Mathf.Clamp(startPixels[top] + deltaContent, floor, Mathf.Max(floor, duo - floor));
+        float newBottom = duo - newTop;
 
-        const float floor = 0.01f;
-        _basePctBuf[top] = Mathf.Clamp(startRowH[top] + deltaPct, floor, 1f - floor);
-        _basePctBuf[bottom] = Mathf.Clamp(startRowH[bottom] - deltaPct, floor, 1f - floor);
+        var targetPixels = new float[startPixels.Length];
+        System.Array.Copy(startPixels, targetPixels, startPixels.Length);
+        targetPixels[top] = newTop;
+        targetPixels[bottom] = newBottom;
 
-        float sum = 0f;
-        for (int i = 0; i < _basePctBuf.Length; i++) sum += _basePctBuf[i];
-        if (sum <= 0f)
+        float spacing = table.sociallyDistancedRowsPixels * Mathf.Max(0, table.totalRowsCountLetTheShowBegin - 1);
+        float fixedSum = 0f;
+        int flexCount = 0;
+
+        for (int i = 0; i < startRowH.Length; i++)
         {
-            float even = table.totalRowsCountLetTheShowBegin > 0 ? 1f / table.totalRowsCountLetTheShowBegin : 1f;
-            for (int i = 0; i < _basePctBuf.Length; i++) _basePctBuf[i] = even;
+            bool isTouched = i == top || i == bottom;
+            bool isFixed = startRowH[i] > 0f;
+            bool staysFlex = Mathf.Approximately(startRowH[i], 0f) && !isTouched;
+            if (isFixed) fixedSum += targetPixels[i];
+            if (staysFlex) flexCount++;
         }
-        else
+
+        float availableForPercentages = Mathf.Max(0f, innerHeight - spacing - fixedSum);
+        var newSpecs = new float[startRowH.Length];
+
+        for (int i = 0; i < startRowH.Length; i++)
         {
-            for (int i = 0; i < _basePctBuf.Length; i++) _basePctBuf[i] /= sum;
+            bool isTouched = i == top || i == bottom;
+            bool isFixed = startRowH[i] > 0f;
+            bool staysFlex = Mathf.Approximately(startRowH[i], 0f) && !isTouched;
+
+            if (isFixed)
+            {
+                newSpecs[i] = table.ConvertCurrentRowPixelsToStoredFixedLikeBlueprint(Mathf.Max(floor, targetPixels[i]), innerHeight);
+                continue;
+            }
+
+            if (staysFlex)
+            {
+                newSpecs[i] = 0f;
+                continue;
+            }
+
+            float pct = availableForPercentages > 0.0001f ? Mathf.Clamp01(targetPixels[i] / availableForPercentages) : 0f;
+            newSpecs[i] = pct > 0f ? -pct : 0f;
         }
 
-        for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++)
-            table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(_basePctBuf[i]);
+        if (flexCount == 0) NormalizeNegativeSpecsWhenNoFlexLikeChoir(newSpecs);
 
-        DadHudSaveRowsFromArraysLikeReceipt(top, bottom, startRowH, _basePctBuf);
+        for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++) table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = newSpecs[i];
 
+        DadHudSaveRowsFromArraysLikeReceipt(top, bottom, startRowH, newSpecs);
+        table.FlagLayoutAsNeedingSpaDay();
+        if (Application.isPlaying) table.UpdateSeatingLikeAProUsher();
         EditorUtility.SetDirty(table);
     }
 
@@ -286,15 +363,21 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (table == null) return;
         if (!HasSelection()) return;
 
-        Undo.RecordObject(table, "Align Selection Horizontal");
-        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
-        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+        table.PerformEditorTableActionLikeABoss("Align Selection Horizontal", () =>
+        {
+            int r0 = Mathf.Min(selRow, selRow2);
+            int r1 = Mathf.Max(selRow, selRow2);
+            int c0 = Mathf.Min(selCol, selCol2);
+            int c1 = Mathf.Max(selCol, selCol2);
 
-        for (int r = r0; r <= r1; r++)
-            for (int c = c0; c <= c1; c++)
-                table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, h);
-
-        EditorUtility.SetDirty(table);
+            for (int r = r0; r <= r1; r++)
+            {
+                for (int c = c0; c <= c1; c++)
+                {
+                    table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, h);
+                }
+            }
+        });
     }
 
     private void ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment v)
@@ -302,15 +385,21 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (table == null) return;
         if (!HasSelection()) return;
 
-        Undo.RecordObject(table, "Align Selection Vertical");
-        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
-        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
+        table.PerformEditorTableActionLikeABoss("Align Selection Vertical", () =>
+        {
+            int r0 = Mathf.Min(selRow, selRow2);
+            int r1 = Mathf.Max(selRow, selRow2);
+            int c0 = Mathf.Min(selCol, selCol2);
+            int c1 = Mathf.Max(selCol, selCol2);
 
-        for (int r = r0; r <= r1; r++)
-            for (int c = c0; c <= c1; c++)
-                table.AlignCellVerticalOnlyLikeLaserLevel(r, c, v);
-
-        EditorUtility.SetDirty(table);
+            for (int r = r0; r <= r1; r++)
+            {
+                for (int c = c0; c <= c1; c++)
+                {
+                    table.AlignCellVerticalOnlyLikeLaserLevel(r, c, v);
+                }
+            }
+        });
     }
 
     private void ClampSelection()
@@ -326,17 +415,25 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         int n = Mathf.Max(1, table.totalColumnsCountHighFive);
         var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
         float innerW = Mathf.Max(0f, rt.rect.width - table.comfyPaddingLeftForElbows - table.comfyPaddingRightForElbows);
+
         EnsureFloatBuffer(ref _previewColBuf, n);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+
+        DistributeLikeACatererInto(
             n,
-            i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f;
+                return table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(raw, innerW);
+            },
             table.sociallyDistancedColumnsPixels,
             innerW,
             ref _previewColBuf);
 
         float spacing = table.sociallyDistancedColumnsPixels * Mathf.Max(0, n - 1);
         float avail = Mathf.Max(1f, innerW - spacing);
+
         EnsureFloatBuffer(ref _colPctBuf, n);
+
         float sum = 0f;
         for (int i = 0; i < n; i++)
         {
@@ -344,6 +441,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             _colPctBuf[i] = v;
             sum += v;
         }
+
         if (sum > 0f)
         {
             for (int i = 0; i < n; i++) _colPctBuf[i] /= sum;
@@ -355,17 +453,25 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         int n = Mathf.Max(1, table.totalRowsCountLetTheShowBegin);
         var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
         float innerH = Mathf.Max(0f, rt.rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
+
         EnsureFloatBuffer(ref _previewRowBuf, n);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+
+        DistributeLikeACatererInto(
             n,
-            i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f;
+                return table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(raw, innerH);
+            },
             table.sociallyDistancedRowsPixels,
             innerH,
             ref _previewRowBuf);
 
         float spacing = table.sociallyDistancedRowsPixels * Mathf.Max(0, n - 1);
         float avail = Mathf.Max(1f, innerH - spacing);
+
         EnsureFloatBuffer(ref _rowPctBuf, n);
+
         float sum = 0f;
         for (int i = 0; i < n; i++)
         {
@@ -373,6 +479,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             _rowPctBuf[i] = v;
             sum += v;
         }
+
         if (sum > 0f)
         {
             for (int i = 0; i < n; i++) _rowPctBuf[i] /= sum;
@@ -389,25 +496,39 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (buf == null || buf.Length != len) buf = new float[len];
     }
 
-    private void DadHudSaveColumnsFromArraysLikeReceipt(int left, int right, float[] startPct, float[] newPct)
+    private void DadHudSaveColumnsFromArraysLikeReceipt(int left, int right, float[] startSpecs, float[] newSpecs)
     {
-        if (table == null || startPct == null || newPct == null) return;
+        if (table == null || startSpecs == null || newSpecs == null) return;
+
+        var startPct = ComputeColumnPercentagesFromSpecsLikePie(startSpecs);
+        var nowPct = ComputeColumnPercentagesFromSpecsLikePie(newSpecs);
+
+        if (left < 0 || right >= startPct.Length || right >= nowPct.Length) return;
+
         var list = new List<(int idx, float start, float now)>(2)
     {
-        (left,  Mathf.Clamp01(startPct[left]),  Mathf.Clamp01(newPct[left])),
-        (right, Mathf.Clamp01(startPct[right]), Mathf.Clamp01(newPct[right]))
+        (left, Mathf.Clamp01(startPct[left]), Mathf.Clamp01(nowPct[left])),
+        (right, Mathf.Clamp01(startPct[right]), Mathf.Clamp01(nowPct[right])),
     };
+
         DadHudSaveLikeFridgeNote(true, list);
     }
 
-    private void DadHudSaveRowsFromArraysLikeReceipt(int top, int bottom, float[] startPct, float[] newPct)
+    private void DadHudSaveRowsFromArraysLikeReceipt(int top, int bottom, float[] startSpecs, float[] newSpecs)
     {
-        if (table == null || startPct == null || newPct == null) return;
+        if (table == null || startSpecs == null || newSpecs == null) return;
+
+        var startPct = ComputeRowPercentagesFromSpecsLikePie(startSpecs);
+        var nowPct = ComputeRowPercentagesFromSpecsLikePie(newSpecs);
+
+        if (top < 0 || bottom >= startPct.Length || bottom >= nowPct.Length) return;
+
         var list = new List<(int idx, float start, float now)>(2)
     {
-        (top,    Mathf.Clamp01(startPct[top]),    Mathf.Clamp01(newPct[top])),
-        (bottom, Mathf.Clamp01(startPct[bottom]), Mathf.Clamp01(newPct[bottom]))
+        (top, Mathf.Clamp01(startPct[top]), Mathf.Clamp01(nowPct[top])),
+        (bottom, Mathf.Clamp01(startPct[bottom]), Mathf.Clamp01(nowPct[bottom])),
     };
+
         DadHudSaveLikeFridgeNote(false, list);
     }
 
@@ -516,38 +637,53 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
 
     private void DistributeColumnsNow()
     {
-        Undo.RecordObject(table, "Distribute Columns");
-        table.DistributeAllColumnsEvenlyLikeAShortOrderCook();
-        EditorUtility.SetDirty(table);
+        table.PerformEditorTableActionLikeABoss("Distribute Columns", () =>
+        {
+            table.DistributeAllColumnsEvenlyLikeAShortOrderCook();
+        });
     }
 
     private void DistributeRowsNow()
     {
-        Undo.RecordObject(table, "Distribute Rows");
-        table.DistributeAllRowsEvenlyLikeAShortOrderCook();
-        EditorUtility.SetDirty(table);
+        table.PerformEditorTableActionLikeABoss("Distribute Rows", () =>
+        {
+            table.DistributeAllRowsEvenlyLikeAShortOrderCook();
+        });
     }
 
     private void DrawAlternatingColorsUI()
     {
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
+            bool newRows = table.toggleZebraStripesForRows;
+            Color newRowA = table.zebraRowColorA;
+            Color newRowB = table.zebraRowColorB;
+            bool newCols = table.toggleZebraStripesForColumns;
+            Color newColA = table.zebraColumnColorA;
+            Color newColB = table.zebraColumnColorB;
+
             EditorGUI.BeginChangeCheck();
-            table.toggleZebraStripesForRows = EditorGUILayout.Toggle("Alternating Rows", table.toggleZebraStripesForRows);
+            newRows = EditorGUILayout.Toggle("Alternating Rows", newRows);
             using (new EditorGUI.IndentLevelScope())
             {
-                table.zebraRowColorA = EditorGUILayout.ColorField("Row A", table.zebraRowColorA);
-                table.zebraRowColorB = EditorGUILayout.ColorField("Row B", table.zebraRowColorB);
+                newRowA = EditorGUILayout.ColorField("Row A", newRowA);
+                newRowB = EditorGUILayout.ColorField("Row B", newRowB);
             }
-            table.toggleZebraStripesForColumns = EditorGUILayout.Toggle("Alternating Columns", table.toggleZebraStripesForColumns);
+            newCols = EditorGUILayout.Toggle("Alternating Columns", newCols);
             using (new EditorGUI.IndentLevelScope())
             {
-                table.zebraColumnColorA = EditorGUILayout.ColorField("Column A", table.zebraColumnColorA);
-                table.zebraColumnColorB = EditorGUILayout.ColorField("Column B", table.zebraColumnColorB);
+                newColA = EditorGUILayout.ColorField("Column A", newColA);
+                newColB = EditorGUILayout.ColorField("Column B", newColB);
             }
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Alternating Colors");
+                table.toggleZebraStripesForRows = newRows;
+                table.zebraRowColorA = newRowA;
+                table.zebraRowColorB = newRowB;
+                table.toggleZebraStripesForColumns = newCols;
+                table.zebraColumnColorA = newColA;
+                table.zebraColumnColorB = newColB;
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
             }
@@ -559,7 +695,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 EditorPrefs.SetBool("TTT_TableImg", newTblImgToggle);
                 if (!newTblImgToggle)
                 {
-                    Undo.RecordObject(table, "Clear Table Background Image");
                     table.ClearTableBackgroundImage();
                     table.FlagLayoutAsNeedingSpaDay();
                     EditorUtility.SetDirty(table);
@@ -577,7 +712,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 var newSprite = (Sprite)EditorGUILayout.ObjectField("Background Image", curSprite, typeof(Sprite), false);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(table, "Set Table Background Image");
                     if (newSprite != null) table.SetTableBackgroundImage(newSprite, curTint, curSliced);
                     else table.ClearTableBackgroundImage();
                     table.FlagLayoutAsNeedingSpaDay();
@@ -596,7 +730,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     bool newSliced = EditorGUILayout.Toggle("Sliced", liveSliced);
                     if (EditorGUI.EndChangeCheck())
                     {
-                        Undo.RecordObject(table, "Set Table Background Style");
                         table.SetTableBackgroundImage(liveSprite, newTint, newSliced);
                         table.FlagLayoutAsNeedingSpaDay();
                         EditorUtility.SetDirty(table);
@@ -843,56 +976,86 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         table.SyncColumnWardrobes();
         var col = table.fancyColumnWardrobes[cIdx];
+
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField($"Column {cIdx + 1}", EditorStyles.boldLabel);
-            bool manualCols = EditorPrefs.GetBool("TTT_ManualCols", false);
+
+            bool useFixedWidth = col.requestedWidthMaybePercentIfNegative > 0f;
+            bool newUseFixedWidth = useFixedWidth;
+            float newRequested = col.requestedWidthMaybePercentIfNegative;
+            Sprite newBackdrop = col.backdropPictureOnTheHouse;
+            Color newTint = col.backdropTintFlavor;
+            bool newSliced = col.backdropUseSlicedLikePizza;
+            bool newOneBig = col.useOneBigBackdropForWholeColumn;
+            bool newCustom = col.customAnchorsAndPivotBecauseWeFancy;
+            Vector2 newAnchorMin = col.customAnchorMinPointy;
+            Vector2 newAnchorMax = col.customAnchorMaxPointy;
+            Vector2 newPivot = col.customPivotSpinny;
+            bool imgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
+            bool newImgToggle = imgToggle;
+
             EditorGUI.BeginChangeCheck();
-            manualCols = EditorGUILayout.Toggle("Fixed Widths", manualCols);
-            EditorPrefs.SetBool("TTT_ManualCols", manualCols);
-            if (manualCols)
+
+            newUseFixedWidth = EditorGUILayout.Toggle("Use Fixed Width", useFixedWidth);
+            if (newUseFixedWidth)
             {
-                float px = Mathf.Max(0f, col.requestedWidthMaybePercentIfNegative > 0f ? col.requestedWidthMaybePercentIfNegative : 0f);
+                float currentInnerWidth = GetCurrentInnerWidthLikeSnackTray();
+                float px = useFixedWidth
+                    ? table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(col.requestedWidthMaybePercentIfNegative, currentInnerWidth)
+                    : table.GetLiveColumnWidthPixelsLikeTapeMeasure(cIdx);
+
                 px = EditorGUILayout.FloatField("Width (px)", px);
-                col.requestedWidthMaybePercentIfNegative = Mathf.Max(0f, px);
+                newRequested = table.ConvertCurrentColumnPixelsToStoredFixedLikeBlueprint(Mathf.Max(0f, px), currentInnerWidth);
             }
             else
             {
-                float pct = col.requestedWidthMaybePercentIfNegative < 0f ? (-col.requestedWidthMaybePercentIfNegative * 100f) : 0f;
+                float[] livePct = table.ComputeColumnPercentagesLikeASpreadsheet();
+                float pct = col.requestedWidthMaybePercentIfNegative < 0f
+                    ? (-col.requestedWidthMaybePercentIfNegative * 100f)
+                    : ((cIdx < livePct.Length ? livePct[cIdx] : 0f) * 100f);
+
                 pct = Mathf.Clamp(EditorGUILayout.Slider("Width %", pct, 0f, 100f), 0f, 100f);
-                col.requestedWidthMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
+                newRequested = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            bool imgToggle = EditorPrefs.GetBool($"TTT_ColImg_{cIdx}", false);
-            bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
-            if (newImgToggle != imgToggle)
-            {
-                EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newImgToggle);
-                if (!newImgToggle) col.backdropPictureOnTheHouse = null;
-            }
-
+            newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
             if (newImgToggle)
             {
-                col.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", col.backdropPictureOnTheHouse, typeof(Sprite), false);
-                if (col.backdropPictureOnTheHouse != null)
+                newBackdrop = (Sprite)EditorGUILayout.ObjectField("Background Image", newBackdrop, typeof(Sprite), false);
+                if (newBackdrop != null)
                 {
-                    col.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", col.backdropTintFlavor);
-                    col.backdropUseSlicedLikePizza = EditorGUILayout.Toggle("Sliced", col.backdropUseSlicedLikePizza);
-                    col.useOneBigBackdropForWholeColumn = EditorGUILayout.Toggle("Use One Stretched BG", col.useOneBigBackdropForWholeColumn);
+                    newTint = EditorGUILayout.ColorField("Tint Color", newTint);
+                    newSliced = EditorGUILayout.Toggle("Sliced", newSliced);
+                    newOneBig = EditorGUILayout.Toggle("Use One Stretched BG", newOneBig);
                 }
             }
-
-            col.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", col.customAnchorsAndPivotBecauseWeFancy);
-            if (col.customAnchorsAndPivotBecauseWeFancy)
+            else
             {
-                col.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", col.customAnchorMinPointy);
-                col.customAnchorMaxPointy = EditorGUILayout.Vector2Field("Anchor Max", col.customAnchorMaxPointy);
-                col.customPivotSpinny = EditorGUILayout.Vector2Field("Pivot", col.customPivotSpinny);
+                newBackdrop = null;
+            }
+
+            newCustom = EditorGUILayout.Toggle("Custom Anchors & Pivot", newCustom);
+            if (newCustom)
+            {
+                newAnchorMin = EditorGUILayout.Vector2Field("Anchor Min", newAnchorMin);
+                newAnchorMax = EditorGUILayout.Vector2Field("Anchor Max", newAnchorMax);
+                newPivot = EditorGUILayout.Vector2Field("Pivot", newPivot);
             }
 
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Column Style");
+                EditorPrefs.SetBool($"TTT_ColImg_{cIdx}", newImgToggle);
+                col.requestedWidthMaybePercentIfNegative = newRequested;
+                col.backdropPictureOnTheHouse = newBackdrop;
+                col.backdropTintFlavor = newTint;
+                col.backdropUseSlicedLikePizza = newSliced;
+                col.useOneBigBackdropForWholeColumn = newOneBig;
+                col.customAnchorsAndPivotBecauseWeFancy = newCustom;
+                col.customAnchorMinPointy = newAnchorMin;
+                col.customAnchorMaxPointy = newAnchorMax;
+                col.customPivotSpinny = newPivot;
                 table.shareThePieEvenlyForColumns = false;
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
@@ -1148,17 +1311,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             float splitX = x + colW[c] + colGap * 0.5f;
             var handle = new Rect(splitX - grab * 0.5f, grid.y, grab, grid.height);
+
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeHorizontal);
 
             if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
             {
                 dragCol = c;
                 dragStartMouse = e.mousePosition.x;
-                table.ConvertAllSpecsToPercentages();
-                table.NormalizeWardrobePercentsToOneDadBod();
-                FillCurrentColumnPercentages();
-                EnsureFloatBuffer(ref startColW, _colPctBuf.Length);
-                System.Array.Copy(_colPctBuf, startColW, _colPctBuf.Length);
+                SnapshotColumnSpecsForResizeLikeReceipt();
                 table.shareThePieEvenlyForColumns = false;
                 GUIUtility.hotControl = GUIUtility.GetControlID(FocusType.Passive);
                 Undo.RecordObject(table, "Resize Column");
@@ -1180,17 +1340,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             float splitY = y + rowH[r] + rowGap * 0.5f;
             var handle = new Rect(grid.x, splitY - grab * 0.5f, grid.width, grab);
+
             EditorGUIUtility.AddCursorRect(handle, MouseCursor.ResizeVertical);
 
             if (e.type == EventType.MouseDown && handle.Contains(e.mousePosition))
             {
                 dragRow = r;
                 dragStartMouse = e.mousePosition.y;
-                table.ConvertAllSpecsToPercentages();
-                table.NormalizeWardrobePercentsToOneDadBod();
-                FillCurrentRowPercentages();
-                EnsureFloatBuffer(ref startRowH, _rowPctBuf.Length);
-                System.Array.Copy(_rowPctBuf, startRowH, _rowPctBuf.Length);
+                SnapshotRowSpecsForResizeLikeReceipt();
                 table.shareThePieEvenlyForRows = false;
                 GUIUtility.hotControl = GUIUtility.GetControlID(FocusType.Passive);
                 Undo.RecordObject(table, "Resize Row");
@@ -1249,55 +1406,82 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         table.SyncRowWardrobes();
         var row = table.snazzyRowWardrobes[rIdx];
+
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField($"Row {rIdx + 1}", EditorStyles.boldLabel);
-            bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
+
+            bool useFixedHeight = row.requestedHeightMaybePercentIfNegative > 0f;
+            bool newUseFixedHeight = useFixedHeight;
+            float newRequested = row.requestedHeightMaybePercentIfNegative;
+            Sprite newBackdrop = row.backdropPictureOnTheHouse;
+            Color newTint = row.backdropTintFlavor;
+            bool newSliced = row.backdropUseSlicedLikePizza;
+            bool newFillLast = row.lastVisibleCellEatsLeftovers;
+            bool newCustom = row.customAnchorsAndPivotBecauseWeFancy;
+            Vector2 newAnchorMin = row.customAnchorMinPointy;
+            Vector2 newAnchorMax = row.customAnchorMaxPointy;
+            Vector2 newPivot = row.customPivotSpinny;
+
+            bool imgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
+            bool newImgToggle = imgToggle;
+
             EditorGUI.BeginChangeCheck();
-            manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
-            EditorPrefs.SetBool("TTT_ManualRows", manualRows);
-            if (manualRows)
+
+            newUseFixedHeight = EditorGUILayout.Toggle("Use Fixed Height", useFixedHeight);
+            if (newUseFixedHeight)
             {
-                float px = Mathf.Max(0f, row.requestedHeightMaybePercentIfNegative > 0f ? row.requestedHeightMaybePercentIfNegative : 0f);
+                float currentInnerHeight = GetCurrentInnerHeightLikeSnackTray();
+                float px = useFixedHeight ? table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(row.requestedHeightMaybePercentIfNegative, currentInnerHeight) : table.GetLiveRowHeightPixelsLikeTapeMeasure(rIdx);
                 px = EditorGUILayout.FloatField("Height (px)", px);
-                row.requestedHeightMaybePercentIfNegative = Mathf.Max(0f, px);
+                newRequested = table.ConvertCurrentRowPixelsToStoredFixedLikeBlueprint(Mathf.Max(0f, px), currentInnerHeight);
             }
             else
             {
-                float pct = row.requestedHeightMaybePercentIfNegative < 0f ? (-row.requestedHeightMaybePercentIfNegative * 100f) : 0f;
+                float[] livePct = table.ComputeRowPercentagesLikeASpreadsheet();
+                float pct = row.requestedHeightMaybePercentIfNegative < 0f ? (-row.requestedHeightMaybePercentIfNegative * 100f) : ((rIdx < livePct.Length ? livePct[rIdx] : 0f) * 100f);
                 pct = Mathf.Clamp(EditorGUILayout.Slider("Height %", pct, 0f, 100f), 0f, 100f);
-                row.requestedHeightMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
+                newRequested = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            bool imgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
-            bool newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
-            if (newImgToggle != imgToggle)
-            {
-                EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newImgToggle);
-                if (!newImgToggle) row.backdropPictureOnTheHouse = null;
-            }
+            newFillLast = EditorGUILayout.Toggle("Last Visible Cell Eats Leftovers", newFillLast);
 
+            newImgToggle = EditorGUILayout.ToggleLeft("Image Settings", imgToggle);
             if (newImgToggle)
             {
-                row.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", row.backdropPictureOnTheHouse, typeof(Sprite), false);
-                if (row.backdropPictureOnTheHouse != null)
+                newBackdrop = (Sprite)EditorGUILayout.ObjectField("Background Image", newBackdrop, typeof(Sprite), false);
+                if (newBackdrop != null)
                 {
-                    row.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", row.backdropTintFlavor);
-                    row.backdropUseSlicedLikePizza = EditorGUILayout.Toggle("Sliced", row.backdropUseSlicedLikePizza);
+                    newTint = EditorGUILayout.ColorField("Tint Color", newTint);
+                    newSliced = EditorGUILayout.Toggle("Sliced", newSliced);
                 }
             }
-
-            row.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", row.customAnchorsAndPivotBecauseWeFancy);
-            if (row.customAnchorsAndPivotBecauseWeFancy)
+            else
             {
-                row.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", row.customAnchorMinPointy);
-                row.customAnchorMaxPointy = EditorGUILayout.Vector2Field("Anchor Max", row.customAnchorMaxPointy);
-                row.customPivotSpinny = EditorGUILayout.Vector2Field("Pivot", row.customPivotSpinny);
+                newBackdrop = null;
+            }
+
+            newCustom = EditorGUILayout.Toggle("Custom Anchors & Pivot", newCustom);
+            if (newCustom)
+            {
+                newAnchorMin = EditorGUILayout.Vector2Field("Anchor Min", newAnchorMin);
+                newAnchorMax = EditorGUILayout.Vector2Field("Anchor Max", newAnchorMax);
+                newPivot = EditorGUILayout.Vector2Field("Pivot", newPivot);
             }
 
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Row Style");
+                EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newImgToggle);
+                row.requestedHeightMaybePercentIfNegative = newRequested;
+                row.backdropPictureOnTheHouse = newBackdrop;
+                row.backdropTintFlavor = newTint;
+                row.backdropUseSlicedLikePizza = newSliced;
+                row.lastVisibleCellEatsLeftovers = newFillLast;
+                row.customAnchorsAndPivotBecauseWeFancy = newCustom;
+                row.customAnchorMinPointy = newAnchorMin;
+                row.customAnchorMaxPointy = newAnchorMax;
+                row.customPivotSpinny = newPivot;
                 table.shareThePieEvenlyForRows = false;
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
@@ -1310,13 +1494,28 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
         {
             GUILayout.Label("Selection", GUILayout.Width(70));
-            var clipStyle = new GUIStyle(EditorStyles.miniLabel) { clipping = TextClipping.Clip, wordWrap = false, alignment = TextAnchor.MiddleLeft };
-            string selText = SelectionLabel();
-            EditorGUILayout.LabelField(selText, clipStyle, GUILayout.ExpandWidth(true), GUILayout.MinWidth(1));
+
+            var clipStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                clipping = TextClipping.Clip,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+
+            EditorGUILayout.LabelField(SelectionLabel(), clipStyle, GUILayout.ExpandWidth(true), GUILayout.MinWidth(1));
             GUILayout.FlexibleSpace();
-            float w2 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 70f, 110f);
-            if (GUILayout.Button("Select", GUILayout.Width(w2))) SelectActiveCellInHierarchy();
-            if (GUILayout.Button("Ping", GUILayout.Width(w2))) PingActiveCell();
+
+            float w2 = CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 70f, 110f);
+
+            if (GUILayout.Button("Select", GUILayout.Width(w2)))
+            {
+                SelectActiveCellInHierarchy();
+            }
+
+            if (GUILayout.Button("Ping", GUILayout.Width(w2)))
+            {
+                PingActiveCell();
+            }
         }
 
         DrawResizeHudLikeStretchyPants();
@@ -1324,45 +1523,8 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (!HasSelection() || table == null) return;
 
         bool singleCell = selRow == selRow2 && selCol == selCol2 && headerColBigEnchilada < 0 && headerRowBigEnchilada < 0;
-        using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
-        {
-            GUILayout.Label("Align", GUILayout.Width(50));
-            int r0 = Mathf.Min(selRow, selRow2);
-            int r1 = Mathf.Max(selRow, selRow2);
-            int c0 = Mathf.Min(selCol, selCol2);
-            int c1 = Mathf.Max(selCol, selCol2);
-            bool leftOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-            bool centerOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-            bool rightOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-            bool topOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-            bool middleOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-            bool bottomOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-            bool fullOn = table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
-            float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
-            EditorGUI.BeginDisabledGroup(leftOn);
-            if (GUILayout.Button("Left", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(centerOn);
-            if (GUILayout.Button("Center", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(rightOn);
-            if (GUILayout.Button("Right", GUILayout.Width(w7))) { ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(topOn);
-            if (GUILayout.Button("Top", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(middleOn);
-            if (GUILayout.Button("Middle", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(bottomOn);
-            if (GUILayout.Button("Bottom", GUILayout.Width(w7))) { ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(fullOn);
-            if (GUILayout.Button("Full", GUILayout.Width(w7))) { ApplyFullAlignmentToSelectionLikeFittedSheet(); Repaint(); }
-            EditorGUI.EndDisabledGroup();
-        }
-
         if (!singleCell) return;
+
         var rt = table.FetchCellRectTransformVIP(selRow, selCol);
         if (rt == null) return;
 
@@ -1372,30 +1534,46 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField("Contents", EditorStyles.boldLabel);
+
             if (kids.Count == 0)
             {
                 EditorGUILayout.LabelField("None", EditorStyles.miniLabel);
+                return;
             }
-            else
+
+            for (int i = 0; i < kids.Count; i++)
             {
-                for (int i = 0; i < kids.Count; i++)
+                var t = kids[i];
+                if (t == null) continue;
+
+                var nice = TypeNameShortLikeNameTag(
+                    PickPrimaryUiTypeLikeMenuDecider(t.gameObject));
+
+                using (new EditorGUILayout.HorizontalScope())
                 {
-                    var t = kids[i];
-                    if (t == null) continue;
-                    var nice = Ux_TonkersTableTopiaExtensions.TypeNameShortLikeNameTag(Ux_TonkersTableTopiaExtensions.PickPrimaryUiTypeLikeMenuDecider(t.gameObject));
-                    using (new EditorGUILayout.HorizontalScope())
+                    EditorGUILayout.LabelField($"{i + 1}. {t.gameObject.name} ({nice})");
+
+                    if (GUILayout.Button("Select", GUILayout.Width(60)))
                     {
-                        EditorGUILayout.LabelField($"{i + 1}. {t.gameObject.name} ({nice})");
-                        if (GUILayout.Button("Select", GUILayout.Width(60))) t.SelectAndPingLikeABeacon();
-                        if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                        t.SelectAndPingLikeABeacon();
+                    }
+
+                    if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                    {
+                        Undo.RecordObject(table, "Delete Cell Child");
+
+                        if (!Application.isPlaying)
                         {
-                            Undo.RecordObject(table, "Delete Cell Child");
-                            if (!Application.isPlaying) Undo.DestroyObjectImmediate(t.gameObject);
-                            else Destroy(t.gameObject);
-                            table.FlagLayoutAsNeedingSpaDay();
-                            EditorUtility.SetDirty(table);
-                            break;
+                            Undo.DestroyObjectImmediate(t.gameObject);
                         }
+                        else
+                        {
+                            Destroy(t.gameObject);
+                        }
+
+                        table.FlagLayoutAsNeedingSpaDay();
+                        EditorUtility.SetDirty(table);
+                        break;
                     }
                 }
             }
@@ -1406,106 +1584,9 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUI.enabled = HasSelection();
-                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(4, 0f, 140f);
-                if (GUILayout.Button("Insert Row Above", GUILayout.Width(w))) InsertRowAbove();
-                if (GUILayout.Button("Insert Row Below", GUILayout.Width(w))) InsertRowBelow();
-                if (GUILayout.Button("Insert Col Left", GUILayout.Width(w))) InsertColLeft();
-                if (GUILayout.Button("Insert Col Right", GUILayout.Width(w))) InsertColRight();
-                GUI.enabled = true;
-            }
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUI.enabled = HasSelection();
-                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 0f, 160f);
-                if (GUILayout.Button("Delete Row", GUILayout.Width(w))) DeleteRow();
-                if (GUILayout.Button("Delete Col", GUILayout.Width(w))) DeleteCol();
-                GUI.enabled = true;
-            }
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                bool hasRect = HasRectSelection();
-                int r0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
-                int c0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
-                int rCount = hasRect ? Mathf.Abs(selRow2 - selRow) + 1 : 1;
-                int cCount = hasRect ? Mathf.Abs(selCol2 - selCol) + 1 : 1;
-
-                bool canMerge = hasRect && table != null && table.CanMergeThisPicnicBlanket(r0, c0, rCount, cCount);
-                bool canUnmerge = hasRect && table != null && table.CanUnmergeThisFoodFight(r0, c0, rCount, cCount);
-
-                float w4 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(4, 0f, 160f);
-
-                GUI.enabled = canMerge;
-                if (GUILayout.Button("Merge", GUILayout.Width(w4))) MergeSelection();
-                GUI.enabled = canUnmerge;
-                if (GUILayout.Button("Unmerge", GUILayout.Width(w4))) UnmergeTopLeft();
-                GUI.enabled = true;
-
-                if (GUILayout.Button("Distribute Columns", GUILayout.Width(w4))) DistributeColumnsNow();
-                if (GUILayout.Button("Distribute Rows", GUILayout.Width(w4))) DistributeRowsNow();
-            }
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                float w = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(2, 0f, 200f);
-                if (GUILayout.Button("Make Last Column Flexible", GUILayout.Width(w))) { MakeLastColumnFlexyButHouseTrained(); }
-                if (GUILayout.Button("Make Last Row Flexible", GUILayout.Width(w))) { MakeLastRowFlexyButHouseTrained(); }
-            }
-
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUI.enabled = HasSelection();
-                GUILayout.Label("Align", GUILayout.Width(50));
-
-                int r0 = Mathf.Min(selRow, selRow2);
-                int r1 = Mathf.Max(selRow, selRow2);
-                int c0 = Mathf.Min(selCol, selCol2);
-                int c1 = Mathf.Max(selCol, selCol2);
-
-                bool leftOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-                bool centerOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-                bool rightOn = table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-                bool topOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-                bool middleOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-                bool bottomOn = table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-                bool fullOn = table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
-
-                float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
-
-                EditorGUI.BeginDisabledGroup(leftOn);
-                if (GUILayout.Button("Left", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(centerOn);
-                if (GUILayout.Button("Center", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(rightOn);
-                if (GUILayout.Button("Right", GUILayout.Width(w7))) ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(topOn);
-                if (GUILayout.Button("Top", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(middleOn);
-                if (GUILayout.Button("Middle", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(bottomOn);
-                if (GUILayout.Button("Bottom", GUILayout.Width(w7))) ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-                EditorGUI.EndDisabledGroup();
-
-                EditorGUI.BeginDisabledGroup(fullOn);
-                if (GUILayout.Button("Full", GUILayout.Width(w7))) ApplyFullAlignmentToSelectionLikeFittedSheet();
-                EditorGUI.EndDisabledGroup();
-
-                GUI.enabled = true;
-            }
+            DrawEditorModeTabsLikeToolbar();
+            DrawModeBannerLikeWorkbench();
+            DrawCurrentModePanelLikeWorkbench();
         }
     }
 
@@ -1515,7 +1596,6 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
             var parent = rt ? rt.transform.parent as RectTransform : null;
-
             bool usePercent = EditorPrefs.GetBool("Ux_TableSize_UsePercent", true);
             bool newUsePercent = EditorGUILayout.ToggleLeft("Size By Percent", usePercent);
             if (newUsePercent != usePercent)
@@ -1523,7 +1603,7 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                 EditorPrefs.SetBool("Ux_TableSize_UsePercent", newUsePercent);
                 if (newUsePercent && parent != null)
                 {
-                    Undo.RecordObject(rt, "Switch To %");
+                    Undo.RecordObjects(new Object[] { rt, table }, "Switch To %");
                     float parentW = Mathf.Max(1f, parent.rect.width);
                     float parentH = Mathf.Max(1f, parent.rect.height);
                     float wPct = Mathf.Clamp01(rt.rect.width / parentW);
@@ -1535,21 +1615,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     EditorUtility.SetDirty(rt);
                 }
             }
-
             if (newUsePercent)
             {
-                if (parent != null)
-                    EditorGUILayout.HelpBox("Table container scales with its parent. Adjust width% and height% to set the anchored span. Rows/columns use their own percent settings separately.", MessageType.None);
-
+                if (parent != null) EditorGUILayout.HelpBox("Table container scales with its parent. Adjust width% and height% to set the anchored span. Rows/columns use their own percent settings separately.", MessageType.None);
                 float curWPct = Mathf.Clamp01(rt.anchorMax.x - rt.anchorMin.x) * 100f;
                 float curHPct = Mathf.Clamp01(rt.anchorMax.y - rt.anchorMin.y) * 100f;
-
                 EditorGUI.BeginChangeCheck();
                 float wPct = EditorGUILayout.Slider("Width %", curWPct, 0f, 100f);
                 float hPct = EditorGUILayout.Slider("Height %", curHPct, 0f, 100f);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(rt, "Set Table Size %");
+                    Undo.RecordObjects(new Object[] { rt, table }, "Set Table Size %");
                     rt.SetAnchorsByPercentLikeABoss(wPct / 100f, hPct / 100f);
                     table.ConvertAllSpecsToPercentages();
                     table.FlagLayoutAsNeedingSpaDay();
@@ -1559,18 +1635,15 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             }
             else
             {
-                if (parent != null)
-                    EditorGUILayout.HelpBox("Table container uses fixed pixels. Type width/height to set size. Rows/columns sizing still controlled in their own sections.", MessageType.None);
-
+                if (parent != null) EditorGUILayout.HelpBox("Table container uses fixed pixels. Type width/height to set size. Rows/columns sizing still controlled in their own sections.", MessageType.None);
                 float w = Mathf.Max(0f, rt.rect.width);
                 float h = Mathf.Max(0f, rt.rect.height);
-
                 EditorGUI.BeginChangeCheck();
                 float newW = EditorGUILayout.FloatField("Width (px)", w);
                 float newH = EditorGUILayout.FloatField("Height (px)", h);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Undo.RecordObject(rt, "Set Table Size px");
+                    Undo.RecordObjects(new Object[] { rt, table }, "Set Table Size px");
                     rt.SetPixelSizeLikeIts1999(newW, newH);
                     table.ConvertAllSpecsToPercentages();
                     table.FlagLayoutAsNeedingSpaDay();
@@ -1593,23 +1666,34 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         int rows = table.totalRowsCountLetTheShowBegin;
 
         EnsureFloatBuffer(ref _previewColBuf, cols);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+        DistributeLikeACatererInto(
             cols,
-            i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f;
+                return table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(raw, innerW);
+            },
             table.sociallyDistancedColumnsPixels,
             innerW,
             ref _previewColBuf);
 
         EnsureFloatBuffer(ref _previewRowBuf, rows);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+        DistributeLikeACatererInto(
             rows,
-            i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f;
+                return table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(raw, innerH);
+            },
             table.sociallyDistancedRowsPixels,
             innerH,
             ref _previewRowBuf);
 
-        for (int c = 0; c < _previewColBuf.Length; c++) if (_previewColBuf[c] < 1f) _previewColBuf[c] = 1f;
-        for (int r = 0; r < _previewRowBuf.Length; r++) if (_previewRowBuf[r] < 1f) _previewRowBuf[r] = 1f;
+        for (int c = 0; c < _previewColBuf.Length; c++)
+            if (_previewColBuf[c] < 1f) _previewColBuf[c] = 1f;
+
+        for (int r = 0; r < _previewRowBuf.Length; r++)
+            if (_previewRowBuf[r] < 1f) _previewRowBuf[r] = 1f;
 
         float natW = 0f;
         for (int c = 0; c < cols; c++) natW += _previewColBuf[c];
@@ -1714,11 +1798,13 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         _lastInnerHeight = innerH;
 
         var e = Event.current;
+
         if ((e.control || e.command) && e.type == EventType.ScrollWheel && previewRect.Contains(e.mousePosition))
         {
             float oldZoom = zoom;
             float factor = e.delta.y > 0f ? 0.9f : 1.1f;
             zoom = Mathf.Clamp(oldZoom * factor, 0.05f, 3f);
+
             if (Mathf.Abs(zoom - oldZoom) > 0.0001f)
             {
                 EditorPrefs.SetFloat(prefZoom, zoom);
@@ -2016,12 +2102,12 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void MakeLastColumnFlexyButHouseTrained()
     {
         if (table == null) return;
+        Undo.RecordObject(table, "Make Last Column Flexible");
         EnsureColumnStylesSize();
         table.ConvertAllSpecsToPercentages();
         FillCurrentColumnPercentages();
         int n = Mathf.Max(0, table.totalColumnsCountHighFive);
-        for (int i = 0; i < n - 1; i++)
-            table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(_colPctBuf[i]);
+        for (int i = 0; i < n - 1; i++) table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(_colPctBuf[i]);
         if (n > 0) table.fancyColumnWardrobes[n - 1].requestedWidthMaybePercentIfNegative = 0f;
         table.shareThePieEvenlyForColumns = false;
         table.FlagLayoutAsNeedingSpaDay();
@@ -2031,12 +2117,12 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void MakeLastRowFlexyButHouseTrained()
     {
         if (table == null) return;
+        Undo.RecordObject(table, "Make Last Row Flexible");
         EnsureRowStylesSize();
         table.ConvertAllSpecsToPercentages();
         FillCurrentRowPercentages();
         int n = Mathf.Max(0, table.totalRowsCountLetTheShowBegin);
-        for (int i = 0; i < n - 1; i++)
-            table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(_rowPctBuf[i]);
+        for (int i = 0; i < n - 1; i++) table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(_rowPctBuf[i]);
         if (n > 0) table.snazzyRowWardrobes[n - 1].requestedHeightMaybePercentIfNegative = 0f;
         table.shareThePieEvenlyForRows = false;
         table.FlagLayoutAsNeedingSpaDay();
@@ -2046,13 +2132,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void MergeSelection()
     {
         if (!HasRectSelection()) return;
+
         var r0 = Mathf.Min(selRow, selRow2);
         var c0 = Mathf.Min(selCol, selCol2);
         var rCount = Mathf.Abs(selRow2 - selRow) + 1;
         var cCount = Mathf.Abs(selCol2 - selCol) + 1;
-        Undo.RecordObject(table, "Merge Cells");
-        table.MergeCellsLikeAGroupHug(r0, c0, rCount, cCount);
-        table.FlagLayoutAsNeedingSpaDay();
+
+        table.PerformEditorTableActionLikeABoss("Merge Cells", () =>
+        {
+            table.MergeCellsLikeAGroupHug(r0, c0, rCount, cCount);
+        });
     }
 
     private bool MouseIsHoveringOverResizeHandleLikeAHungrySeagull(Rect grid, float[] colW, float[] rowH)
@@ -2087,7 +2176,12 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         table = (Ux_TonkersTableTopiaLayout)target;
         _cachedTableRT = table != null ? table.GetComponent<RectTransform>() : null;
+
+        showPreview = EditorPrefs.GetBool("TTT_ShowPreview", true);
+        sceneHighlight = EditorPrefs.GetBool("TTT_SceneHighlight", true);
+
         EnsureDefaultSelection();
+
         actionMode = (EditorActionMode)EditorPrefs.GetInt(PREF_ActionMode, (int)EditorActionMode.HighlightCells);
         highlightDragActive = false;
         dragCol = -1;
@@ -2138,16 +2232,12 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (startColW == null || startColW.Length != table.totalColumnsCountHighFive) return;
 
         float dxPx = Event.current.mousePosition.x - dragStartMouse;
-
         float naturalW = ComputeNaturalGridWidthLikeTapeMeasure();
         float scaleXLikePeriscope = (grid.width > 0f && naturalW > 0f) ? (grid.width / naturalW) : 1f;
         if (Mathf.Abs(scaleXLikePeriscope) < 0.0001f) scaleXLikePeriscope = 1f;
 
         float deltaContent = dxPx / scaleXLikePeriscope;
-
         ApplyColResize(dragCol, deltaContent);
-
-        table.FlagLayoutAsNeedingSpaDay();
         Repaint();
     }
 
@@ -2156,14 +2246,11 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         if (dragRow < 0 || startRowH == null || startRowH.Length != table.totalRowsCountLetTheShowBegin) return;
 
         float dyPx = Event.current.mousePosition.y - dragStartMouse;
-
         float naturalH = ComputeNaturalGridHeightLikeTapeMeasure();
         float scaleYLikePeriscope = (_lastGridRect.height > 0f) ? (_lastGridRect.height / naturalH) : 1f;
-
         float deltaContent = dyPx / Mathf.Max(0.0001f, scaleYLikePeriscope);
 
         ApplyRowResize(dragRow, deltaContent);
-        table.FlagLayoutAsNeedingSpaDay();
         Repaint();
     }
 
@@ -2223,14 +2310,16 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private void UnmergeTopLeft()
     {
         if (!HasSelection()) return;
+
         int r0 = Mathf.Min(selRow, selRow2);
         int c0 = Mathf.Min(selCol, selCol2);
         int rCount = Mathf.Abs(selRow2 - selRow) + 1;
         int cCount = Mathf.Abs(selCol2 - selCol) + 1;
-        Undo.RecordObject(table, "Unmerge Selection");
-        table.UnmergeEverythingInRectLikeItNeverHappened(r0, c0, rCount, cCount);
-        table.FlagLayoutAsNeedingSpaDay();
-        EditorUtility.SetDirty(table);
+
+        table.PerformEditorTableActionLikeABoss("Unmerge Selection", () =>
+        {
+            table.UnmergeEverythingInRectLikeItNeverHappened(r0, c0, rCount, cCount);
+        });
     }
 
     private void BuildCellBadgeGuiLikeScoutPatches(Dictionary<System.Type, int> snackCounts, bool includeTableBadge, List<GUIContent> outBadges)
@@ -2466,44 +2555,56 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     private float ComputeNaturalGridWidthLikeTapeMeasure()
     {
         if (table == null) return 1f;
+
         var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
         int cols = Mathf.Max(1, table.totalColumnsCountHighFive);
         float innerW = Mathf.Max(1f, rt.rect.width - table.comfyPaddingLeftForElbows - table.comfyPaddingRightForElbows);
 
         EnsureFloatBuffer(ref _previewColBuf, cols);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+
+        DistributeLikeACatererInto(
             cols,
-            i => (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.fancyColumnWardrobes.Count) ? table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative : 0f;
+                return table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(raw, innerW);
+            },
             table.sociallyDistancedColumnsPixels,
             innerW,
-            ref _previewColBuf
-        );
+            ref _previewColBuf);
 
         float natW = 0f;
         for (int c = 0; c < cols; c++) natW += _previewColBuf[c];
         if (cols > 1) natW += table.sociallyDistancedColumnsPixels * (cols - 1);
+
         return Mathf.Max(1f, natW);
     }
 
     private float ComputeNaturalGridHeightLikeTapeMeasure()
     {
         if (table == null) return 1f;
+
         var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
         int rows = Mathf.Max(1, table.totalRowsCountLetTheShowBegin);
         float innerH = Mathf.Max(1f, rt.rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
 
         EnsureFloatBuffer(ref _previewRowBuf, rows);
-        Ux_TonkersTableTopiaExtensions.DistributeLikeACatererInto(
+
+        DistributeLikeACatererInto(
             rows,
-            i => (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f,
+            i =>
+            {
+                float raw = (i < table.snazzyRowWardrobes.Count) ? table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative : 0f;
+                return table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(raw, innerH);
+            },
             table.sociallyDistancedRowsPixels,
             innerH,
-            ref _previewRowBuf
-        );
+            ref _previewRowBuf);
 
         float natH = 0f;
         for (int r = 0; r < rows; r++) natH += _previewRowBuf[r];
         if (rows > 1) natH += table.sociallyDistancedRowsPixels * (rows - 1);
+
         return Mathf.Max(1f, natH);
     }
 
@@ -2511,13 +2612,22 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
     {
         if (table == null) return;
         if (!HasSelection()) return;
-        Undo.RecordObject(table, "Align Selection Full");
-        int r0 = Mathf.Min(selRow, selRow2), r1 = Mathf.Max(selRow, selRow2);
-        int c0 = Mathf.Min(selCol, selCol2), c1 = Mathf.Max(selCol, selCol2);
-        for (int r = r0; r <= r1; r++)
-            for (int c = c0; c <= c1; c++)
-                table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
-        EditorUtility.SetDirty(table);
+
+        table.PerformEditorTableActionLikeABoss("Align Selection Full", () =>
+        {
+            int r0 = Mathf.Min(selRow, selRow2);
+            int r1 = Mathf.Max(selRow, selRow2);
+            int c0 = Mathf.Min(selCol, selCol2);
+            int c1 = Mathf.Max(selCol, selCol2);
+
+            for (int r = r0; r <= r1; r++)
+            {
+                for (int c = c0; c <= c1; c++)
+                {
+                    table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
+                }
+            }
+        });
     }
 
     private void DrawPaddingEditorForSingleCellLikeCouchCushions(Ux_TonkersTableTopiaCell cell)
@@ -2808,5 +2918,463 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         }
 
         EditorGUI.DrawRect(rect, tint);
+    }
+
+    private void SnapshotColumnSpecsForResizeLikeReceipt()
+    {
+        EnsureColumnStylesSize();
+        EnsureFloatBuffer(ref startColW, table.totalColumnsCountHighFive);
+
+        for (int i = 0; i < table.totalColumnsCountHighFive; i++) startColW[i] = table.fancyColumnWardrobes[i].requestedWidthMaybePercentIfNegative;
+    }
+
+    private void SnapshotRowSpecsForResizeLikeReceipt()
+    {
+        EnsureRowStylesSize();
+        EnsureFloatBuffer(ref startRowH, table.totalRowsCountLetTheShowBegin);
+
+        for (int i = 0; i < table.totalRowsCountLetTheShowBegin; i++) startRowH[i] = table.snazzyRowWardrobes[i].requestedHeightMaybePercentIfNegative;
+    }
+
+    private float GetCurrentInnerWidthLikeSnackTray()
+    {
+        var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
+        return Mathf.Max(0f, rt.rect.width - table.comfyPaddingLeftForElbows - table.comfyPaddingRightForElbows);
+    }
+
+    private float[] ComputeColumnPercentagesFromSpecsLikePie(float[] specs)
+    {
+        if (specs == null || specs.Length == 0) return System.Array.Empty<float>();
+
+        float innerWidth = GetCurrentInnerWidthLikeSnackTray();
+
+        float[] pixels = DistributeLikeACaterer(
+            specs.Length,
+            i => table.ResolveColumnSpecForCurrentInnerWidthLikeBlueprint(specs[i], innerWidth),
+            table.sociallyDistancedColumnsPixels,
+            innerWidth);
+
+        float spacing = table.sociallyDistancedColumnsPixels * Mathf.Max(0, specs.Length - 1);
+        float avail = Mathf.Max(1f, innerWidth - spacing);
+
+        var pct = new float[specs.Length];
+        float sum = 0f;
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            pct[i] = Mathf.Clamp01(pixels[i] / avail);
+            sum += pct[i];
+        }
+
+        if (sum > 0f)
+        {
+            for (int i = 0; i < specs.Length; i++) pct[i] /= sum;
+        }
+
+        return pct;
+    }
+
+    private float[] ComputeRowPercentagesFromSpecsLikePie(float[] specs)
+    {
+        if (specs == null || specs.Length == 0) return System.Array.Empty<float>();
+
+        float innerHeight = GetCurrentInnerHeightLikeSnackTray();
+
+        float[] pixels = DistributeLikeACaterer(
+            specs.Length,
+            i => table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(specs[i], innerHeight),
+            table.sociallyDistancedRowsPixels,
+            innerHeight);
+
+        float spacing = table.sociallyDistancedRowsPixels * Mathf.Max(0, specs.Length - 1);
+        float avail = Mathf.Max(1f, innerHeight - spacing);
+
+        var pct = new float[specs.Length];
+        float sum = 0f;
+
+        for (int i = 0; i < specs.Length; i++)
+        {
+            pct[i] = Mathf.Clamp01(pixels[i] / avail);
+            sum += pct[i];
+        }
+
+        if (sum > 0f)
+        {
+            for (int i = 0; i < specs.Length; i++) pct[i] /= sum;
+        }
+
+        return pct;
+    }
+
+    private static void NormalizeNegativeSpecsWhenNoFlexLikeChoir(float[] specs)
+    {
+        if (specs == null || specs.Length == 0) return;
+
+        float sum = 0f;
+        for (int i = 0; i < specs.Length; i++)
+        {
+            if (specs[i] < 0f) sum += -specs[i];
+        }
+
+        if (sum <= 1.0001f) return;
+
+        float inv = 1f / sum;
+        for (int i = 0; i < specs.Length; i++)
+        {
+            if (specs[i] < 0f) specs[i] = -Mathf.Clamp01((-specs[i]) * inv);
+        }
+    }
+
+    private float GetCurrentInnerHeightLikeSnackTray()
+    {
+        var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
+        return Mathf.Max(0f, rt.rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
+    }
+
+    private void DrawDesignSizeHeaderLikeBlueprint()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Original Table Design Size", EditorStyles.boldLabel);
+
+            Vector2 newDesignSize = table.designSizeForThisTableLikeBlueprint;
+            bool newScaleFixed = table.scaleFixedSizesWithResolutionLikeBlueprint;
+
+            EditorGUI.BeginChangeCheck();
+
+            newScaleFixed = EditorGUILayout.ToggleLeft("Scale Fixed Sizes With Design Size", newScaleFixed);
+            newDesignSize = EditorGUILayout.Vector2Field("Design Size", newDesignSize);
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(table, "Edit Table Design Size");
+                table.scaleFixedSizesWithResolutionLikeBlueprint = newScaleFixed;
+                table.designSizeForThisTableLikeBlueprint = new Vector2(Mathf.Max(1f, newDesignSize.x), Mathf.Max(1f, newDesignSize.y));
+                table.FlagLayoutAsNeedingSpaDay();
+                EditorUtility.SetDirty(table);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(_cachedTableRT == null))
+                {
+                    if (GUILayout.Button("Use Current Rect"))
+                    {
+                        Undo.RecordObject(table, "Capture Table Design Size");
+                        table.CaptureCurrentRectAsDesignSizeLikeBlueprint();
+                        table.FlagLayoutAsNeedingSpaDay();
+                        EditorUtility.SetDirty(table);
+                    }
+                }
+
+                if (_cachedTableRT != null)
+                {
+                    Vector2 currentRect = _cachedTableRT.rect.size;
+                    EditorGUILayout.LabelField(currentRect.x.ToString("0.##") + " x " + currentRect.y.ToString("0.##"), EditorStyles.miniLabel, GUILayout.Width(120f));
+                }
+            }
+        }
+    }
+
+    private void DrawEditorModeTabsLikeToolbar()
+    {
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+        {
+            DrawModeTabButtonLikeToolbar(EditorActionMode.HighlightCells, new GUIContent("Highlight"));
+            DrawModeTabButtonLikeToolbar(EditorActionMode.Resize, new GUIContent("Resize"));
+            DrawModeTabButtonLikeToolbar(EditorActionMode.SelectObjects, new GUIContent("Select"));
+            DrawModeTabButtonLikeToolbar(EditorActionMode.MoveCells, new GUIContent("Move"));
+
+            GUILayout.FlexibleSpace();
+
+            bool newShowPreview = GUILayout.Toggle(showPreview, "Preview", EditorStyles.toolbarButton, GUILayout.Width(74f));
+            if (newShowPreview != showPreview)
+            {
+                showPreview = newShowPreview;
+                EditorPrefs.SetBool("TTT_ShowPreview", showPreview);
+                Repaint();
+            }
+
+            bool newSceneHighlight = GUILayout.Toggle(sceneHighlight, "Scene", EditorStyles.toolbarButton, GUILayout.Width(70f));
+            if (newSceneHighlight != sceneHighlight)
+            {
+                sceneHighlight = newSceneHighlight;
+                EditorPrefs.SetBool("TTT_SceneHighlight", sceneHighlight);
+                RepaintSceneViewLikeABobRoss();
+            }
+        }
+    }
+
+    private void DrawModeTabButtonLikeToolbar(EditorActionMode mode, GUIContent label)
+    {
+        bool isActive = actionMode == mode;
+        bool pressed = GUILayout.Toggle(isActive, label, EditorStyles.toolbarButton);
+
+        if (pressed == isActive) return;
+
+        actionMode = mode;
+        EditorPrefs.SetInt(PREF_ActionMode, (int)actionMode);
+        GUI.FocusControl(null);
+        Repaint();
+    }
+
+    private void DrawModeBannerLikeWorkbench()
+    {
+        Rect rect = EditorGUILayout.GetControlRect(false, 40f);
+
+        Color fill = GetCurrentModeAccentLikeWorkbench();
+        fill.a = EditorGUIUtility.isProSkin ? 0.22f : 0.12f;
+
+        Color border = GetCurrentModeAccentLikeWorkbench();
+        border.a = 0.9f;
+
+        EditorGUI.DrawRect(rect, fill);
+        EditorGUI.DrawRect(new Rect(rect.x, rect.y, 3f, rect.height), border);
+
+        Rect titleRect = new Rect(rect.x + 10f, rect.y + 4f, rect.width - 16f, 18f);
+        Rect bodyRect = new Rect(rect.x + 10f, rect.y + 20f, rect.width - 16f, 16f);
+
+        EditorGUI.LabelField(titleRect, GetCurrentModeLabelLikeWorkbench(), EditorStyles.boldLabel);
+        EditorGUI.LabelField(bodyRect, GetCurrentModeHelpLikeWorkbench(), EditorStyles.miniLabel);
+    }
+
+    private void DrawCurrentModePanelLikeWorkbench()
+    {
+        switch (actionMode)
+        {
+            case EditorActionMode.HighlightCells:
+                DrawStructureToolsLikeWorkbench();
+                DrawMergeToolsLikeWorkbench();
+                DrawSelectionAlignmentToolsLikeWorkbench();
+                break;
+
+            case EditorActionMode.Resize:
+                DrawDistributionToolsLikeWorkbench();
+                DrawStructureToolsLikeWorkbench();
+                break;
+
+            case EditorActionMode.SelectObjects:
+                DrawSelectionNavigationToolsLikeWorkbench();
+                DrawStructureToolsLikeWorkbench();
+                DrawSelectionAlignmentToolsLikeWorkbench();
+                break;
+
+            case EditorActionMode.MoveCells:
+                DrawMoveModeToolsLikeWorkbench();
+                DrawStructureToolsLikeWorkbench();
+                break;
+        }
+    }
+
+    private void DrawStructureToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Structure", EditorStyles.boldLabel);
+
+            bool hasSelection = HasSelection();
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Insert Row Above", hasSelection, InsertRowAbove);
+                DrawActionButtonLikeToolbar("Insert Row Below", hasSelection, InsertRowBelow);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Insert Column Left", hasSelection, InsertColLeft);
+                DrawActionButtonLikeToolbar("Insert Column Right", hasSelection, InsertColRight);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Delete Row", hasSelection, DeleteRow);
+                DrawActionButtonLikeToolbar("Delete Column", hasSelection, DeleteCol);
+            }
+        }
+    }
+
+    private void DrawMergeToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Merge", EditorStyles.boldLabel);
+
+            bool hasRect = HasRectSelection();
+            int r0 = hasRect ? Mathf.Min(selRow, selRow2) : 0;
+            int c0 = hasRect ? Mathf.Min(selCol, selCol2) : 0;
+            int rCount = hasRect ? Mathf.Abs(selRow2 - selRow) + 1 : 1;
+            int cCount = hasRect ? Mathf.Abs(selCol2 - selCol) + 1 : 1;
+
+            bool canMerge = hasRect && table != null && table.CanMergeThisPicnicBlanket(r0, c0, rCount, cCount);
+            bool canUnmerge = hasRect && table != null && table.CanUnmergeThisFoodFight(r0, c0, rCount, cCount);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Merge Selection", canMerge, MergeSelection);
+                DrawActionButtonLikeToolbar("Unmerge Selection", canUnmerge, UnmergeTopLeft);
+            }
+        }
+    }
+
+    private void DrawDistributionToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Resize Utilities", EditorStyles.boldLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Distribute Columns Evenly", table != null, DistributeColumnsNow);
+                DrawActionButtonLikeToolbar("Distribute Rows Evenly", table != null, DistributeRowsNow);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Make Last Column Flexible", table != null, MakeLastColumnFlexyButHouseTrained);
+                DrawActionButtonLikeToolbar("Make Last Row Flexible", table != null, MakeLastRowFlexyButHouseTrained);
+            }
+        }
+    }
+
+    private void DrawSelectionNavigationToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Selection", EditorStyles.boldLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Select Active Cell", HasSelection(), SelectActiveCellInHierarchy);
+                DrawActionButtonLikeToolbar("Ping Active Cell", HasSelection(), PingActiveCell);
+            }
+        }
+    }
+
+    private void DrawMoveModeToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Move Workflow", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Drag from a source cell in the WYSIWYG preview, then release over a destination cell. Foreign content and nested tables move together with layout preserved.", MessageType.None);
+
+            string moveState = moveDragActive
+                ? $"Source: R{moveSrcRow + 1}, C{moveSrcCol + 1}"
+                : "Source: not armed";
+
+            EditorGUILayout.LabelField(moveState, EditorStyles.miniLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Select Active Cell", HasSelection(), SelectActiveCellInHierarchy);
+                DrawActionButtonLikeToolbar("Ping Active Cell", HasSelection(), PingActiveCell);
+            }
+        }
+    }
+
+    private void DrawSelectionAlignmentToolsLikeWorkbench()
+    {
+        using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+        {
+            EditorGUILayout.LabelField("Alignment", EditorStyles.boldLabel);
+
+            bool hasSelection = HasSelection();
+
+            int r0 = hasSelection ? Mathf.Min(selRow, selRow2) : 0;
+            int r1 = hasSelection ? Mathf.Max(selRow, selRow2) : 0;
+            int c0 = hasSelection ? Mathf.Min(selCol, selCol2) : 0;
+            int c1 = hasSelection ? Mathf.Max(selCol, selCol2) : 0;
+
+            bool leftOn = hasSelection && table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            bool centerOn = hasSelection && table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            bool rightOn = hasSelection && table.IsSelectionHorizAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+
+            bool topOn = hasSelection && table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            bool middleOn = hasSelection && table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            bool bottomOn = hasSelection && table.IsSelectionVertAlignedLikeDejaVu(r0, r1, c0, c1, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+
+            bool fullOn = hasSelection && table.IsSelectionFullLikeBurritoWrap(r0, r1, c0, c1);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Left", hasSelection && !leftOn, () => ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left));
+                DrawActionButtonLikeToolbar("Center", hasSelection && !centerOn, () => ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center));
+                DrawActionButtonLikeToolbar("Right", hasSelection && !rightOn, () => ApplyHorizontalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right));
+                DrawActionButtonLikeToolbar("Full", hasSelection && !fullOn, ApplyFullAlignmentToSelectionLikeFittedSheet);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawActionButtonLikeToolbar("Top", hasSelection && !topOn, () => ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top));
+                DrawActionButtonLikeToolbar("Middle", hasSelection && !middleOn, () => ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle));
+                DrawActionButtonLikeToolbar("Bottom", hasSelection && !bottomOn, () => ApplyVerticalToSelectionLikeLaserLevel(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom));
+            }
+        }
+    }
+
+    private void DrawActionButtonLikeToolbar(string label, bool enabled, System.Action action)
+    {
+        using (new EditorGUI.DisabledScope(!enabled))
+        {
+            if (GUILayout.Button(label, GUILayout.Height(24f)))
+            {
+                action?.Invoke();
+                Repaint();
+            }
+        }
+    }
+
+    private string GetCurrentModeLabelLikeWorkbench()
+    {
+        switch (actionMode)
+        {
+            case EditorActionMode.Resize:
+                return "Resize Mode";
+
+            case EditorActionMode.SelectObjects:
+                return "Select Mode";
+
+            case EditorActionMode.MoveCells:
+                return "Move Mode";
+
+            default:
+                return "Highlight Mode";
+        }
+    }
+
+    private string GetCurrentModeHelpLikeWorkbench()
+    {
+        switch (actionMode)
+        {
+            case EditorActionMode.Resize:
+                return "Drag split handles in the preview to resize rows and columns, then use resize utilities here.";
+
+            case EditorActionMode.SelectObjects:
+                return "Click a cell in the preview to select its hierarchy object, then use the selection tools below.";
+
+            case EditorActionMode.MoveCells:
+                return "Drag from one cell and release on another cell to move foreign content and nested tables.";
+
+            default:
+                return "Click or drag in the preview to define the active selection, then use merge and alignment tools.";
+        }
+    }
+
+    private Color GetCurrentModeAccentLikeWorkbench()
+    {
+        switch (actionMode)
+        {
+            case EditorActionMode.Resize:
+                return new Color(1f, 0.63f, 0.18f, 1f);
+
+            case EditorActionMode.SelectObjects:
+                return new Color(0.22f, 0.72f, 0.35f, 1f);
+
+            case EditorActionMode.MoveCells:
+                return new Color(0.63f, 0.39f, 1f, 1f);
+
+            default:
+                return new Color(0.2f, 0.6f, 1f, 1f);
+        }
     }
 }

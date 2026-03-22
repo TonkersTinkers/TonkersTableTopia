@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using static Ux_TonkersTableTopiaEditorExtensions;
 
 /// <summary>
 /// this class only exists to prevent you from adding table objects to other table objects,
@@ -59,9 +60,9 @@ internal static class Ux_TonkersTableTopiaBouncerAtTheDoor
 
         if (compyMcSneaky is Ux_TonkersTableTopiaLayout freshlyMintedTable)
         {
-            Ux_TonkersTableTopiaExtensions.DeferEditorSafe(() =>
+            DeferEditorSafe(() =>
             {
-                Ux_TonkersTableTopiaExtensions.TryVacuumTableScaffoldLikeRoomba(freshlyMintedTable);
+                TryVacuumTableScaffoldLikeRoomba(freshlyMintedTable);
             });
         }
     }
@@ -70,11 +71,11 @@ internal static class Ux_TonkersTableTopiaBouncerAtTheDoor
     {
         if (partyCrasher == null) return;
         Debug.LogError(message + "  You may have just broken the rows, double check the heirachy, i'm trying to prevent you from breaking it, so stop adding objecvts to table objects, this is a cell based system, gameobjects only belong as children of cells and THAT'S IT do not try to add components to tables/rows/cells.", partyCrasher);
-        Ux_TonkersTableTopiaExtensions.DeferEditorSafe(() =>
+        DeferEditorSafe(() =>
         {
             if (partyCrasher is Ux_TonkersTableTopiaLayout ttt)
             {
-                Ux_TonkersTableTopiaExtensions.TryVacuumTableScaffoldLikeRoomba(ttt);
+                TryVacuumTableScaffoldLikeRoomba(ttt);
             }
             UnityEditor.Undo.DestroyObjectImmediate(partyCrasher);
         });

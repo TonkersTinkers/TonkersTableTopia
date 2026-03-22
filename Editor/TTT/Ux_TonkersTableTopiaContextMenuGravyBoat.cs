@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static Ux_TonkersTableTopiaContentExtensions;
 
 public static class Ux_TonkersTableTopiaContextMenuGravyBoat
 {
@@ -159,7 +160,7 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
             {
                 var kid = foreignKids[i];
                 if (kid == null) continue;
-                var prettyType = Ux_TonkersTableTopiaExtensions.TypeNameShortLikeNameTag(Ux_TonkersTableTopiaExtensions.PickPrimaryUiTypeLikeMenuDecider(kid.gameObject));
+                var prettyType = TypeNameShortLikeNameTag(PickPrimaryUiTypeLikeMenuDecider(kid.gameObject));
                 string label = $"{i + 1}. {kid.gameObject.name} ({prettyType})";
                 gm.AddItem(new GUIContent($"Contents/{label}/Select"), false, () => { kid.SelectAndPingLikeABeacon(); });
                 gm.AddItem(new GUIContent($"Contents/{label}/Delete"), false, () =>
@@ -219,18 +220,49 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         var m = new GenericMenu();
         var colTarget = (UnityEngine.Object)(table.FindFirstAwakeCellInColumnLikeCoffee(colIndex) ?? table.FetchCellRectTransformVIP(0, colIndex) ?? (table as Component));
         Action hl = table != null ? new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, colIndex, table.totalRowsCountLetTheShowBegin, 1)) : null;
+
         AddCancelSelectAndHighlightLikeABoss(m, colTarget, hl);
 
-        m.AddItem(new GUIContent("Column/Insert Left"), false, () => { Undo.RecordObject(table, "Insert Column"); table.InsertColumnLikeANinja(colIndex); });
-        m.AddItem(new GUIContent("Column/Insert Right"), false, () => { Undo.RecordObject(table, "Insert Column"); table.InsertColumnLikeANinja(colIndex + 1); });
-        m.AddItem(new GUIContent("Column/Delete"), false, () => { Undo.RecordObject(table, "Delete Column(s)"); int c0, c1; if (Ux_TonkersTableTopiaLayoutEditor.TryFetchSelectedColumnRange(out c0, out c1) && c1 > c0) { if (!table.BulkDeleteColumnsLikeAChamp(c0, c1)) EditorUtility.DisplayDialog("Column Removal", "Could not delete the selected columns due to merged cells or minimum column limit.", "OK"); } else { table.SafeDeleteColumnAtWithWittyConfirm(colIndex); } });
+        m.AddItem(new GUIContent("Column/Insert Left"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex));
+        });
+
+        m.AddItem(new GUIContent("Column/Insert Right"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex + 1));
+        });
+
+        m.AddItem(new GUIContent("Column/Delete"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Delete Column(s)", () =>
+            {
+                int c0;
+                int c1;
+
+                if (Ux_TonkersTableTopiaLayoutEditor.TryFetchSelectedColumnRange(out c0, out c1) && c1 > c0)
+                {
+                    if (!table.BulkDeleteColumnsLikeAChamp(c0, c1))
+                    {
+                        EditorUtility.DisplayDialog("Column Removal", "Could not delete the selected columns due to merged cells or minimum column limit.", "OK");
+                    }
+                }
+                else
+                {
+                    table.SafeDeleteColumnAtWithWittyConfirm(colIndex);
+                }
+            });
+        });
 
         m.AddSeparator("Column/");
-        m.AddItem(new GUIContent("Column/Distribute All Columns Evenly"), false, () => { Undo.RecordObject(table, "Distribute Columns"); float even = table.totalColumnsCountHighFive > 0 ? 1f / table.totalColumnsCountHighFive : 1f; table.SyncColumnWardrobes(); for (int c = 0; c < table.totalColumnsCountHighFive; c++) table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative = -even; table.shareThePieEvenlyForColumns = false; table.FlagLayoutAsNeedingSpaDay(); EditorUtility.SetDirty(table); });
+
+        m.AddItem(new GUIContent("Column/Distribute All Columns Evenly"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook());
+        });
 
         m.AddSeparator("");
         AddAlignSubmenuForColumn(m, table, colIndex);
-
         m.ShowAsContext();
     }
 
@@ -259,33 +291,29 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         {
             m.AddItem(new GUIContent("Resize/Evenly Split Left/Right"), false, () =>
             {
-                Undo.RecordObject(table, "Evenly Split Columns");
-                table.ConvertAllSpecsToPercentages();
-                table.SplitTwoColumnsEvenlyLikePeas(splitIndex);
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
+                table.PerformEditorTableActionLikeABoss("Evenly Split Columns", () =>
+                {
+                    table.ConvertAllSpecsToPercentages();
+                    table.SplitTwoColumnsEvenlyLikePeas(splitIndex);
+                });
             });
 
             AddPercentSettersForColumns(table, m, splitIndex);
-
             m.AddSeparator("Resize/");
+
             m.AddItem(new GUIContent("Resize/Distribute All Columns Evenly"), false, () =>
             {
-                Undo.RecordObject(table, "Distribute Columns");
-                table.DistributeAllColumnsEvenlyLikeAShortOrderCook();
-                EditorUtility.SetDirty(table);
+                table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook());
             });
         }
         else
         {
             AddPercentSettersForRows(table, m, splitIndex);
-
             m.AddSeparator("Resize/");
+
             m.AddItem(new GUIContent("Resize/Distribute All Rows Evenly"), false, () =>
             {
-                Undo.RecordObject(table, "Distribute Rows");
-                table.DistributeAllRowsEvenlyLikeAShortOrderCook();
-                EditorUtility.SetDirty(table);
+                table.PerformEditorTableActionLikeABoss("Distribute Rows", () => table.DistributeAllRowsEvenlyLikeAShortOrderCook());
             });
         }
 
@@ -297,18 +325,49 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         var m = new GenericMenu();
         var rowRt = table.FetchRowRectTransformVIP(rowIndex) as UnityEngine.Object;
         Action hl = table != null ? new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, rowIndex, 0, 1, table.totalColumnsCountHighFive)) : null;
+
         AddCancelSelectAndHighlightLikeABoss(m, rowRt ?? table, hl);
 
-        m.AddItem(new GUIContent("Row/Insert Above"), false, () => { Undo.RecordObject(table, "Insert Row"); table.InsertRowLikeANinja(rowIndex); });
-        m.AddItem(new GUIContent("Row/Insert Below"), false, () => { Undo.RecordObject(table, "Insert Row"); table.InsertRowLikeANinja(rowIndex + 1); });
-        m.AddItem(new GUIContent("Row/Delete"), false, () => { Undo.RecordObject(table, "Delete Row(s)"); int r0, r1; if (Ux_TonkersTableTopiaLayoutEditor.TryFetchSelectedRowRange(out r0, out r1) && r1 > r0) { if (!table.BulkDeleteRowsLikeABoss(r0, r1)) EditorUtility.DisplayDialog("Row Removal", "Could not delete the selected rows due to merged cells or minimum row limit.", "OK"); } else { table.SafeDeleteRowAtWithWittyConfirm(rowIndex); } });
+        m.AddItem(new GUIContent("Row/Insert Above"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Insert Row", () => table.InsertRowLikeANinja(rowIndex));
+        });
+
+        m.AddItem(new GUIContent("Row/Insert Below"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Insert Row", () => table.InsertRowLikeANinja(rowIndex + 1));
+        });
+
+        m.AddItem(new GUIContent("Row/Delete"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Delete Row(s)", () =>
+            {
+                int r0;
+                int r1;
+
+                if (Ux_TonkersTableTopiaLayoutEditor.TryFetchSelectedRowRange(out r0, out r1) && r1 > r0)
+                {
+                    if (!table.BulkDeleteRowsLikeABoss(r0, r1))
+                    {
+                        EditorUtility.DisplayDialog("Row Removal", "Could not delete the selected rows due to merged cells or minimum row limit.", "OK");
+                    }
+                }
+                else
+                {
+                    table.SafeDeleteRowAtWithWittyConfirm(rowIndex);
+                }
+            });
+        });
 
         m.AddSeparator("Row/");
-        m.AddItem(new GUIContent("Row/Distribute All Rows Evenly"), false, () => { Undo.RecordObject(table, "Distribute Rows"); float even = table.totalRowsCountLetTheShowBegin > 0 ? 1f / table.totalRowsCountLetTheShowBegin : 1f; table.SyncRowWardrobes(); for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++) table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -even; table.shareThePieEvenlyForRows = false; table.FlagLayoutAsNeedingSpaDay(); EditorUtility.SetDirty(table); });
+
+        m.AddItem(new GUIContent("Row/Distribute All Rows Evenly"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Distribute Rows", () => table.DistributeAllRowsEvenlyLikeAShortOrderCook());
+        });
 
         m.AddSeparator("");
         AddAlignSubmenuForRow(m, table, rowIndex);
-
         m.ShowAsContext();
     }
 
@@ -316,14 +375,21 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     {
         var m = new GenericMenu();
         Action hl = table != null ? new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, 0, table.totalRowsCountLetTheShowBegin, table.totalColumnsCountHighFive)) : null;
+
         AddCancelSelectAndHighlightLikeABoss(m, table, hl);
 
-        m.AddItem(new GUIContent("Table/Distribute Columns Evenly"), false, () => { Undo.RecordObject(table, "Distribute Columns"); float even = table.totalColumnsCountHighFive > 0 ? 1f / table.totalColumnsCountHighFive : 1f; table.SyncColumnWardrobes(); for (int c = 0; c < table.totalColumnsCountHighFive; c++) table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative = -even; table.shareThePieEvenlyForColumns = false; table.FlagLayoutAsNeedingSpaDay(); EditorUtility.SetDirty(table); });
-        m.AddItem(new GUIContent("Table/Distribute Rows Evenly"), false, () => { Undo.RecordObject(table, "Distribute Rows"); float even = table.totalRowsCountLetTheShowBegin > 0 ? 1f / table.totalRowsCountLetTheShowBegin : 1f; table.SyncRowWardrobes(); for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++) table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -even; table.shareThePieEvenlyForRows = false; table.FlagLayoutAsNeedingSpaDay(); EditorUtility.SetDirty(table); });
+        m.AddItem(new GUIContent("Table/Distribute Columns Evenly"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook());
+        });
+
+        m.AddItem(new GUIContent("Table/Distribute Rows Evenly"), false, () =>
+        {
+            table.PerformEditorTableActionLikeABoss("Distribute Rows", () => table.DistributeAllRowsEvenlyLikeAShortOrderCook());
+        });
 
         m.AddSeparator("");
         AddAlignSubmenuForTable(m, table);
-
         m.ShowAsContext();
     }
 
@@ -342,28 +408,17 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     private static void AddPercentSettersForColumns(Ux_TonkersTableTopiaLayout table, GenericMenu m, int index)
     {
         float[] picks = { 0.1f, 0.25f, 1f / 3f, 0.5f, 0.75f };
+
         for (int i = 0; i < picks.Length; i++)
         {
             var p = picks[i];
+
             m.AddItem(new GUIContent($"Resize/Set Column {index + 1} To/{Mathf.RoundToInt(p * 100f)}%"), false, () =>
             {
-                Undo.RecordObject(table, "Set Column %");
-                table.SyncColumnWardrobes();
-
-                float keep = Mathf.Clamp01(-table.fancyColumnWardrobes[index].requestedWidthMaybePercentIfNegative);
-                float delta = p - keep;
-
-                float sumOthers = 0f;
-                for (int c = 0; c < table.totalColumnsCountHighFive; c++) if (c != index) sumOthers += Mathf.Clamp01(-table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative);
-                float scale = sumOthers > 0.0001f ? Mathf.Clamp01((sumOthers - delta) / sumOthers) : 1f;
-
-                table.fancyColumnWardrobes[index].requestedWidthMaybePercentIfNegative = -p;
-                for (int c = 0; c < table.totalColumnsCountHighFive; c++)
-                    if (c != index)
-                        table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative = -Mathf.Clamp01(Mathf.Clamp01(-table.fancyColumnWardrobes[c].requestedWidthMaybePercentIfNegative) * scale);
-
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
+                table.PerformEditorTableActionLikeABoss("Set Column %", () =>
+                {
+                    table.SetColumnPercentageAndRebalanceOthersLikeASpreadsheet(index, p);
+                });
             });
         }
     }
@@ -371,28 +426,17 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     private static void AddPercentSettersForRows(Ux_TonkersTableTopiaLayout table, GenericMenu m, int index)
     {
         float[] picks = { 0.1f, 0.25f, 1f / 3f, 0.5f, 0.75f };
+
         for (int i = 0; i < picks.Length; i++)
         {
             var p = picks[i];
+
             m.AddItem(new GUIContent($"Resize/Set Row {index + 1} To/{Mathf.RoundToInt(p * 100f)}%"), false, () =>
             {
-                Undo.RecordObject(table, "Set Row %");
-                table.SyncRowWardrobes();
-
-                float keep = Mathf.Clamp01(-table.snazzyRowWardrobes[index].requestedHeightMaybePercentIfNegative);
-                float delta = p - keep;
-
-                float sumOthers = 0f;
-                for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++) if (r != index) sumOthers += Mathf.Clamp01(-table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative);
-                float scale = sumOthers > 0.0001f ? Mathf.Clamp01((sumOthers - delta) / sumOthers) : 1f;
-
-                table.snazzyRowWardrobes[index].requestedHeightMaybePercentIfNegative = -p;
-                for (int r = 0; r < table.totalRowsCountLetTheShowBegin; r++)
-                    if (r != index)
-                        table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative = -Mathf.Clamp01(Mathf.Clamp01(-table.snazzyRowWardrobes[r].requestedHeightMaybePercentIfNegative) * scale);
-
-                table.FlagLayoutAsNeedingSpaDay();
-                EditorUtility.SetDirty(table);
+                table.PerformEditorTableActionLikeABoss("Set Row %", () =>
+                {
+                    table.SetRowPercentageAndRebalanceOthersLikeASpreadsheet(index, p);
+                });
             });
         }
     }
@@ -411,63 +455,72 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         bool isFull = false;
         Ux_TonkersTableTopiaLayout.HorizontalAlignment hCur = Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center;
         Ux_TonkersTableTopiaLayout.VerticalAlignment vCur = Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
-        bool has = table != null && table.TryDetectCellAlignmentLikeLieDetector(r, c, out isFull, out hCur, out vCur);
 
+        bool has = table != null && table.TryDetectCellAlignmentLikeLieDetector(r, c, out isFull, out hCur, out vCur);
         bool onLeft = has && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left;
         bool onCenter = has && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center;
         bool onRight = has && !isFull && hCur == Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right;
-
         bool onTop = has && !isFull && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Top;
         bool onMiddle = has && !isFull && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle;
         bool onBottom = has && !isFull && vCur == Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom;
-
         bool onFull = has && isFull;
 
         gm.AddItem(new GUIContent("Align/Left"), onLeft, () =>
         {
-            Undo.RecordObject(table, "Align Left");
-            table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Left", () =>
+            {
+                table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Center"), onCenter, () =>
         {
-            Undo.RecordObject(table, "Align Center");
-            table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Center", () =>
+            {
+                table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Right"), onRight, () =>
         {
-            Undo.RecordObject(table, "Align Right");
-            table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Right", () =>
+            {
+                table.AlignCellHorizontalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+            });
         });
 
         gm.AddSeparator("Align/");
 
         gm.AddItem(new GUIContent("Align/Top"), onTop, () =>
         {
-            Undo.RecordObject(table, "Align Top");
-            table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Top", () =>
+            {
+                table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Middle"), onMiddle, () =>
         {
-            Undo.RecordObject(table, "Align Middle");
-            table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Middle", () =>
+            {
+                table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Bottom"), onBottom, () =>
         {
-            Undo.RecordObject(table, "Align Bottom");
-            table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Bottom", () =>
+            {
+                table.AlignCellVerticalOnlyLikeLaserLevel(r, c, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+            });
         });
 
         gm.AddItem(new GUIContent("Align/Full"), onFull, () =>
         {
-            Undo.RecordObject(table, "Align Full");
-            table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Full", () =>
+            {
+                table.AlignCellForeignsToFillLikeStuffedBurrito(r, c);
+            });
         });
     }
 
@@ -476,58 +529,67 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         bool onLeft = table.IsRowHorizAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
         bool onCenter = table.IsRowHorizAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
         bool onRight = table.IsRowHorizAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-
         bool onTop = table.IsRowVertAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
         bool onMiddle = table.IsRowVertAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
         bool onBottom = table.IsRowVertAlignedLikeMirror(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-
         bool onFull = table.IsRowFullLikeWaterbed(rowIndex);
 
         gm.AddItem(new GUIContent("Align/Left"), onLeft, () =>
         {
-            Undo.RecordObject(table, "Align Row Left");
-            table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Left", () =>
+            {
+                table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Center"), onCenter, () =>
         {
-            Undo.RecordObject(table, "Align Row Center");
-            table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Center", () =>
+            {
+                table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Right"), onRight, () =>
         {
-            Undo.RecordObject(table, "Align Row Right");
-            table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Right", () =>
+            {
+                table.AlignRowHorizontalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+            });
         });
 
         gm.AddSeparator("Align/");
 
         gm.AddItem(new GUIContent("Align/Top"), onTop, () =>
         {
-            Undo.RecordObject(table, "Align Row Top");
-            table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Top", () =>
+            {
+                table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Middle"), onMiddle, () =>
         {
-            Undo.RecordObject(table, "Align Row Middle");
-            table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Middle", () =>
+            {
+                table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Bottom"), onBottom, () =>
         {
-            Undo.RecordObject(table, "Align Row Bottom");
-            table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Bottom", () =>
+            {
+                table.AlignRowVerticalOnlyLikeLaserLevel(rowIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+            });
         });
 
         gm.AddItem(new GUIContent("Align/Full"), onFull, () =>
         {
-            Undo.RecordObject(table, "Align Row Full");
-            table.AlignRowToFillLikeWaterbed(rowIndex);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Row Full", () =>
+            {
+                table.AlignRowToFillLikeWaterbed(rowIndex);
+            });
         });
     }
 
@@ -536,58 +598,67 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         bool onLeft = table.IsColumnHorizAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
         bool onCenter = table.IsColumnHorizAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
         bool onRight = table.IsColumnHorizAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-
         bool onTop = table.IsColumnVertAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
         bool onMiddle = table.IsColumnVertAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
         bool onBottom = table.IsColumnVertAlignedLikeMirror(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-
         bool onFull = table.IsColumnFullLikeWaterfall(colIndex);
 
         gm.AddItem(new GUIContent("Align/Left"), onLeft, () =>
         {
-            Undo.RecordObject(table, "Align Column Left");
-            table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Left", () =>
+            {
+                table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Center"), onCenter, () =>
         {
-            Undo.RecordObject(table, "Align Column Center");
-            table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Center", () =>
+            {
+                table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Right"), onRight, () =>
         {
-            Undo.RecordObject(table, "Align Column Right");
-            table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Right", () =>
+            {
+                table.AlignColumnHorizontalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+            });
         });
 
         gm.AddSeparator("Align/");
 
         gm.AddItem(new GUIContent("Align/Top"), onTop, () =>
         {
-            Undo.RecordObject(table, "Align Column Top");
-            table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Top", () =>
+            {
+                table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Middle"), onMiddle, () =>
         {
-            Undo.RecordObject(table, "Align Column Middle");
-            table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Middle", () =>
+            {
+                table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Bottom"), onBottom, () =>
         {
-            Undo.RecordObject(table, "Align Column Bottom");
-            table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Bottom", () =>
+            {
+                table.AlignColumnVerticalOnlyLikeLaserLevel(colIndex, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+            });
         });
 
         gm.AddItem(new GUIContent("Align/Full"), onFull, () =>
         {
-            Undo.RecordObject(table, "Align Column Full");
-            table.AlignColumnToFillLikeWaterfall(colIndex);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Column Full", () =>
+            {
+                table.AlignColumnToFillLikeWaterfall(colIndex);
+            });
         });
     }
 
@@ -596,58 +667,67 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
         bool onLeft = table.IsTableHorizAlignedLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
         bool onCenter = table.IsTableHorizAlignedLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
         bool onRight = table.IsTableHorizAlignedLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-
         bool onTop = table.IsTableVertAlignedLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
         bool onMiddle = table.IsTableVertAlignedLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
         bool onBottom = table.IsTableVertAlignedLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-
         bool onFull = table.IsTableFullLikeBalloon();
 
         gm.AddItem(new GUIContent("Align/Left"), onLeft, () =>
         {
-            Undo.RecordObject(table, "Align Table Left");
-            table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Left", () =>
+            {
+                table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Center"), onCenter, () =>
         {
-            Undo.RecordObject(table, "Align Table Center");
-            table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Center", () =>
+            {
+                table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Right"), onRight, () =>
         {
-            Undo.RecordObject(table, "Align Table Right");
-            table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Right", () =>
+            {
+                table.AlignTableHorizontalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
+            });
         });
 
         gm.AddSeparator("Align/");
 
         gm.AddItem(new GUIContent("Align/Top"), onTop, () =>
         {
-            Undo.RecordObject(table, "Align Table Top");
-            table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Top", () =>
+            {
+                table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Middle"), onMiddle, () =>
         {
-            Undo.RecordObject(table, "Align Table Middle");
-            table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Middle", () =>
+            {
+                table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
+            });
         });
+
         gm.AddItem(new GUIContent("Align/Bottom"), onBottom, () =>
         {
-            Undo.RecordObject(table, "Align Table Bottom");
-            table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Bottom", () =>
+            {
+                table.AlignTableVerticalOnlyLikeChoir(Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
+            });
         });
 
         gm.AddItem(new GUIContent("Align/Full"), onFull, () =>
         {
-            Undo.RecordObject(table, "Align Table Full");
-            table.AlignTableToFillLikeBalloon();
-            EditorUtility.SetDirty(table);
+            table.PerformEditorTableActionLikeABoss("Align Table Full", () =>
+            {
+                table.AlignTableToFillLikeBalloon();
+            });
         });
     }
 }

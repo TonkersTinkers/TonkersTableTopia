@@ -1,6 +1,8 @@
 using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
+using static Ux_TonkersTableTopiaEditorExtensions;
+using static Ux_TonkersTableTopiaLayoutSizingExtensions;
 
 [CustomEditor(typeof(Ux_TonkersTableTopiaRow))]
 public class Ux_TonkersTableTopiaRowEditor : Editor
@@ -71,8 +73,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                 bool middleOn = table.IsRowVertAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
                 bool bottomOn = table.IsRowVertAlignedLikeMirror(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
                 bool fullOn = table.IsRowFullLikeWaterbed(rIdx);
-
-                float w7 = Ux_TonkersTableTopiaExtensions.CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
+                float w7 = CalcShrinkyDinkWidthLikeDietCokeSquisher(7, 50f, 100f);
 
                 EditorGUI.BeginDisabledGroup(leftOn);
                 if (GUILayout.Button("Left", GUILayout.Width(w7)))
@@ -80,7 +81,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Left");
                     table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Left);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -90,7 +91,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Center");
                     table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Center);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -100,7 +101,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Right");
                     table.AlignRowHorizontalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.HorizontalAlignment.Right);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -110,7 +111,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Top");
                     table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Top);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -120,7 +121,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Middle");
                     table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Middle);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -130,7 +131,7 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Bottom");
                     table.AlignRowVerticalOnlyLikeLaserLevel(rIdx, Ux_TonkersTableTopiaLayout.VerticalAlignment.Bottom);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
 
@@ -140,42 +141,77 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
                     Undo.RecordObject(table, "Align Row Full");
                     table.AlignRowToFillLikeWaterbed(rIdx);
                     EditorUtility.SetDirty(table);
-                    Ux_TonkersTableTopiaExtensions.RequestWysiRepaintLikeFreshCoat();
+                    RequestWysiRepaintLikeFreshCoat();
                 }
                 EditorGUI.EndDisabledGroup();
             }
 
-            bool manualRows = EditorPrefs.GetBool("TTT_ManualRows", false);
-            EditorGUI.BeginChangeCheck();
-            manualRows = EditorGUILayout.Toggle("Fixed Heights", manualRows);
-            EditorPrefs.SetBool("TTT_ManualRows", manualRows);
+            bool useFixedHeight = rs.requestedHeightMaybePercentIfNegative > 0f;
+            bool newUseFixedHeight = useFixedHeight;
+            float newRequested = rs.requestedHeightMaybePercentIfNegative;
+            Sprite newBackdrop = rs.backdropPictureOnTheHouse;
+            Color newTint = rs.backdropTintFlavor;
+            bool newSliced = rs.backdropUseSlicedLikePizza;
+            bool newFillLast = rs.lastVisibleCellEatsLeftovers;
+            bool newCustom = rs.customAnchorsAndPivotBecauseWeFancy;
+            Vector2 newAnchorMin = rs.customAnchorMinPointy;
+            Vector2 newAnchorMax = rs.customAnchorMaxPointy;
+            Vector2 newPivot = rs.customPivotSpinny;
+            bool rowImgToggle = EditorPrefs.GetBool($"TTT_RowImg_{rIdx}", false);
+            bool newRowImgToggle = rowImgToggle;
 
-            if (manualRows)
+            EditorGUI.BeginChangeCheck();
+
+            newUseFixedHeight = EditorGUILayout.Toggle("Use Fixed Height", useFixedHeight);
+            if (newUseFixedHeight)
             {
-                float px = Mathf.Max(0f, rs.requestedHeightMaybePercentIfNegative > 0f ? rs.requestedHeightMaybePercentIfNegative : 0f);
+                float currentInnerHeight = Mathf.Max(0f, table.GetComponent<RectTransform>().rect.height - table.comfyPaddingTopHat - table.comfyPaddingBottomCushion);
+                float px = useFixedHeight ? table.ResolveRowSpecForCurrentInnerHeightLikeBlueprint(rs.requestedHeightMaybePercentIfNegative, currentInnerHeight) : table.GetLiveRowHeightPixelsLikeTapeMeasure(rIdx);
                 px = EditorGUILayout.FloatField("Height (px)", px);
-                rs.requestedHeightMaybePercentIfNegative = Mathf.Max(0f, px);
+                newRequested = table.ConvertCurrentRowPixelsToStoredFixedLikeBlueprint(Mathf.Max(0f, px), currentInnerHeight);
             }
             else
             {
-                float pct = rs.requestedHeightMaybePercentIfNegative < 0f ? (-rs.requestedHeightMaybePercentIfNegative * 100f) : 0f;
+                float[] livePct = table.ComputeRowPercentagesLikeASpreadsheet();
+                float pct = rs.requestedHeightMaybePercentIfNegative < 0f ? (-rs.requestedHeightMaybePercentIfNegative * 100f) : ((rIdx < livePct.Length ? livePct[rIdx] : 0f) * 100f);
                 pct = Mathf.Clamp(EditorGUILayout.Slider("Height %", pct, 0f, 100f), 0f, 100f);
-                rs.requestedHeightMaybePercentIfNegative = pct > 0f ? -(pct / 100f) : 0f;
+                newRequested = pct > 0f ? -(pct / 100f) : 0f;
             }
 
-            rs.backdropPictureOnTheHouse = (Sprite)EditorGUILayout.ObjectField("Background Image", rs.backdropPictureOnTheHouse, typeof(Sprite), false);
-            rs.backdropTintFlavor = EditorGUILayout.ColorField("Tint Color", rs.backdropTintFlavor);
-            rs.customAnchorsAndPivotBecauseWeFancy = EditorGUILayout.Toggle("Custom Anchors & Pivot", rs.customAnchorsAndPivotBecauseWeFancy);
-            if (rs.customAnchorsAndPivotBecauseWeFancy)
+            newFillLast = EditorGUILayout.Toggle("Last Visible Cell Eats Leftovers", newFillLast);
+
+            newRowImgToggle = EditorGUILayout.ToggleLeft("Image Settings", rowImgToggle);
+            if (newRowImgToggle)
             {
-                rs.customAnchorMinPointy = EditorGUILayout.Vector2Field("Anchor Min", rs.customAnchorMinPointy);
-                rs.customAnchorMaxPointy = EditorGUILayout.Vector2Field("Anchor Max", rs.customAnchorMaxPointy);
-                rs.customPivotSpinny = EditorGUILayout.Vector2Field("Pivot", rs.customPivotSpinny);
+                newBackdrop = (Sprite)EditorGUILayout.ObjectField("Background Image", newBackdrop, typeof(Sprite), false);
+                if (newBackdrop != null)
+                {
+                    newTint = EditorGUILayout.ColorField("Tint Color", newTint);
+                    newSliced = EditorGUILayout.Toggle("Sliced", newSliced);
+                }
+            }
+
+            newCustom = EditorGUILayout.Toggle("Custom Anchors & Pivot", newCustom);
+            if (newCustom)
+            {
+                newAnchorMin = EditorGUILayout.Vector2Field("Anchor Min", newAnchorMin);
+                newAnchorMax = EditorGUILayout.Vector2Field("Anchor Max", newAnchorMax);
+                newPivot = EditorGUILayout.Vector2Field("Pivot", newPivot);
             }
 
             if (EditorGUI.EndChangeCheck())
             {
                 Undo.RecordObject(table, "Edit Row Style");
+                EditorPrefs.SetBool($"TTT_RowImg_{rIdx}", newRowImgToggle);
+                rs.requestedHeightMaybePercentIfNegative = newRequested;
+                rs.backdropPictureOnTheHouse = newBackdrop;
+                rs.backdropTintFlavor = newTint;
+                rs.backdropUseSlicedLikePizza = newSliced;
+                rs.lastVisibleCellEatsLeftovers = newFillLast;
+                rs.customAnchorsAndPivotBecauseWeFancy = newCustom;
+                rs.customAnchorMinPointy = newAnchorMin;
+                rs.customAnchorMaxPointy = newAnchorMax;
+                rs.customPivotSpinny = newPivot;
                 table.shareThePieEvenlyForRows = false;
                 table.FlagLayoutAsNeedingSpaDay();
                 EditorUtility.SetDirty(table);
@@ -207,12 +243,17 @@ public class Ux_TonkersTableTopiaRowEditor : Editor
     private static void DeferToTableAndExit(Ux_TonkersTableTopiaLayout table, System.Action action)
     {
         if (table == null) return;
+
         Selection.activeObject = table;
-        EnqueueDeferred(() =>
+
+        DeferEditorSafe(() =>
         {
-            if (table != null) action?.Invoke();
+            if (table == null) return;
+            action?.Invoke();
             EditorGUIUtility.PingObject(table);
+            RequestWysiRepaintLikeFreshCoat();
         });
+
         GUIUtility.ExitGUI();
     }
 
