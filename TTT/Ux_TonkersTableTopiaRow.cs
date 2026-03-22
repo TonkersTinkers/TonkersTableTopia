@@ -1,68 +1,90 @@
+using System;
 using UnityEngine;
 
 [RequireComponent(typeof(RectTransform))]
 [DisallowMultipleComponent]
-public class Ux_TonkersTableTopiaRow : MonoBehaviour
+public class Ux_TonkersTableTopiaRow : Ux_TonkersTableTopiaNodeBase
 {
     [HideInInspector] public int rowNumberWhereShenanigansOccur = -1;
 
-    public GameObject AddForeignKidAtColumnLikeDoorDash(int col, GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
+    public RectTransform RectTransformComponent => GetCachedRectTransform();
+
+    public Ux_TonkersTableTopiaLayout GetTable() => GetCachedTable();
+
+    public int RowIndex => rowNumberWhereShenanigansOccur;
+
+    public GameObject AddContentAtColumn(int columnIndex, GameObject prefab, bool stretchToFill = true, int siblingIndex = -1)
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        int r = rowNumberWhereShenanigansOccur;
-        var cell = t.GetCellLikePizzaSlice(r, col, true);
-        if (cell == null) return null;
-        return cell.AddForeignKidLikeDoorDash(prefab, snapToFill, atSiblingIndex);
+        Ux_TonkersTableTopiaCell cell = GetCellAtColumn(columnIndex, true);
+        return cell != null ? cell.AddContent(prefab, stretchToFill, siblingIndex) : null;
     }
 
-    public T AddForeignKidAtColumnLikeDoorDash<T>(int col, bool snapToFill = true, int atSiblingIndex = -1) where T : Component
+    public T AddContentAtColumn<T>(int columnIndex, bool stretchToFill = true, int siblingIndex = -1) where T : Component
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        int r = rowNumberWhereShenanigansOccur;
-        var cell = t.GetCellLikePizzaSlice(r, col, true);
-        if (cell == null) return null;
-        return cell.AddForeignKidLikeDoorDash<T>(snapToFill, atSiblingIndex);
+        Ux_TonkersTableTopiaCell cell = GetCellAtColumn(columnIndex, true);
+        return cell != null ? cell.AddContent<T>(stretchToFill, siblingIndex) : null;
     }
 
+    public GameObject AddContentAtFirstColumn(GameObject prefab, bool stretchToFill = true)
+    {
+        return AddContentAtColumn(0, prefab, stretchToFill, -1);
+    }
+
+    public GameObject AddContentAtLastColumn(GameObject prefab, bool stretchToFill = true)
+    {
+        Ux_TonkersTableTopiaCell cell = GetLastCell(true);
+        return cell != null ? cell.AddContent(prefab, stretchToFill) : null;
+    }
+
+    public Ux_TonkersTableTopiaLayout AddNestedTableAtColumn(int columnIndex, bool ensureSnapToFill = true)
+    {
+        Ux_TonkersTableTopiaCell cell = GetCellAtColumn(columnIndex, true);
+        return cell != null ? cell.AddNestedTable(ensureSnapToFill) : null;
+    }
+
+    private Ux_TonkersTableTopiaCell GetCellAtColumn(int columnIndex, bool createIfMissing)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        return table != null ? table.GetCellLikePizzaSlice(RowIndex, columnIndex, createIfMissing) : null;
+    }
+
+    private Ux_TonkersTableTopiaCell GetLastCell(bool createIfMissing)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null)
+            return null;
+
+        int lastColumn = Mathf.Max(0, table.totalColumnsCountHighFive - 1);
+        return table.GetCellLikePizzaSlice(RowIndex, lastColumn, createIfMissing);
+    }
+
+    [Obsolete("Use AddContentAtFirstColumn instead.")]
     public GameObject AddForeignFirstColumnLikeDoorDash(GameObject prefab, bool snapToFill = true)
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        return AddForeignKidAtColumnLikeDoorDash(0, prefab, snapToFill, -1);
+        return AddContentAtFirstColumn(prefab, snapToFill);
     }
 
+    [Obsolete("Use AddContentAtLastColumn instead.")]
     public GameObject AddForeignLastColumnLikeDoorDash(GameObject prefab, bool snapToFill = true)
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        int lastCol = Mathf.Max(0, t.totalColumnsCountHighFive - 1);
-        return AddForeignKidAtColumnLikeDoorDash(lastCol, prefab, snapToFill, -1);
+        return AddContentAtLastColumn(prefab, snapToFill);
     }
 
+    [Obsolete("Use AddNestedTableAtColumn instead.")]
     public Ux_TonkersTableTopiaLayout AddNestedTableAtColumnLikeRussianDoll(int col, bool ensureSnapToFill = true)
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        int r = rowNumberWhereShenanigansOccur;
-        var cell = t.GetCellLikePizzaSlice(r, col, true);
-        if (cell == null) return null;
-        return cell.AddNestedTableLikeRussianDoll(ensureSnapToFill);
+        return AddNestedTableAtColumn(col, ensureSnapToFill);
     }
 
-    public Ux_TonkersTableTopiaLayout GetTableLikeFamilyReunion()
-    {
-        return GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-    }
-
+    [Obsolete("Use RectTransformComponent instead.")]
     public RectTransform GetRectLikeYogaMat()
     {
-        return GetComponent<RectTransform>();
+        return RectTransformComponent;
     }
 
+    [Obsolete("Use RowIndex instead.")]
     public int GetRowIndexLikeCornDog()
     {
-        return rowNumberWhereShenanigansOccur;
+        return RowIndex;
     }
 }

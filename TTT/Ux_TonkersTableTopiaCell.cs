@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(RectTransform))]
-[DisallowMultipleComponent()]
-public class Ux_TonkersTableTopiaCell : MonoBehaviour
+[DisallowMultipleComponent]
+public class Ux_TonkersTableTopiaCell : Ux_TonkersTableTopiaNodeBase
 {
     public Color backgroundColorLikeASunset = Color.white;
     public Sprite backgroundPictureBecausePlainIsLame = null;
@@ -16,314 +18,360 @@ public class Ux_TonkersTableTopiaCell : MonoBehaviour
     [HideInInspector] public int rowNumberWhereThePartyIs = -1;
 
     public bool useInnerPaddingPillowFort = false;
-
     public float innerPaddingLeftMarshmallow = 0f;
-
     public float innerPaddingRightMarshmallow = 0f;
-
     public float innerPaddingTopMarshmallow = 0f;
-
     public float innerPaddingBottomMarshmallow = 0f;
 
-    public GameObject AddForeignKidLikeDoorDash(GameObject prefab, bool snapToFill = true, int atSiblingIndex = -1)
+    private ContentSizeFitter _cachedContentSizeFitter;
+    private readonly List<Transform> _foreignScratch = new List<Transform>(16);
+
+    public RectTransform RectTransformComponent => GetCachedRectTransform();
+    public Ux_TonkersTableTopiaLayout Table => GetCachedTable();
+    public int RowIndex => rowNumberWhereThePartyIs;
+    public int ColumnIndex => columnNumberPrimeRib;
+
+    public void EnsureCachedContentSizeFitter(bool needIt)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
+        RectTransform rect = GetCachedRectTransform();
+        if (rect == null)
+        {
+            return;
+        }
 
-        GameObject go = prefab != null ? Instantiate(prefab) : new GameObject("TTT Foreign Kid");
-        var rt = go.GetComponent<RectTransform>();
-        if (rt == null) rt = go.AddComponent<RectTransform>();
-        rt.SetParent(parent, false);
+        if (_cachedContentSizeFitter == null)
+        {
+            rect.TryGetComponent(out _cachedContentSizeFitter);
+        }
 
-        if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
+        if (!needIt)
+        {
+            if (_cachedContentSizeFitter != null)
+            {
+                _cachedContentSizeFitter.enabled = false;
+            }
 
-        if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-        else rt.SetAsLastSibling();
+            return;
+        }
 
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        if (_cachedContentSizeFitter == null)
+        {
+            _cachedContentSizeFitter = Ux_TonkersTableTopiaObjectUtility.GetOrAddComponent<ContentSizeFitter>(rect.gameObject);
+        }
+
+        if (_cachedContentSizeFitter == null)
+        {
+            return;
+        }
+
+        _cachedContentSizeFitter.enabled = true;
+        _cachedContentSizeFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        _cachedContentSizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
     }
 
-    public T AddForeignKidLikeDoorDash<T>(bool snapToFill = true, int atSiblingIndex = -1) where T : Component
+    public GameObject AddContent(GameObject prefab, bool stretchToFill = true, int siblingIndex = -1)
     {
-        var host = AddForeignKidLikeDoorDash(null, snapToFill, atSiblingIndex);
-        if (host == null) return null;
-        var c = host.GetComponent<T>();
-        if (c == null) c = host.AddComponent<T>();
-        return c;
+        return CreateAndAttachContent(
+            () => Ux_TonkersTableTopiaObjectUtility.InstantiatePrefabOrCreate(prefab, "Content"),
+            stretchToFill,
+            siblingIndex,
+            true);
     }
 
+    public T AddContent<T>(bool stretchToFill = true, int siblingIndex = -1) where T : Component
+    {
+        GameObject content = CreateAndAttachContent(
+            () =>
+            {
+                GameObject go = Ux_TonkersTableTopiaObjectUtility.CreateUiObject(typeof(T).Name);
+                return Ux_TonkersTableTopiaObjectUtility.GetOrAddComponent<T>(go) != null ? go : null;
+            },
+            stretchToFill,
+            siblingIndex,
+            true);
+
+        return content != null ? content.GetComponent<T>() : null;
+    }
+
+    public GameObject AddContentFirst(GameObject prefab, bool stretchToFill = true)
+    {
+        return AddContent(prefab, stretchToFill, 0);
+    }
+
+    public GameObject AddContentLast(GameObject prefab, bool stretchToFill = true)
+    {
+        return AddContent(prefab, stretchToFill, -1);
+    }
+
+    public T AddContentFirst<T>(bool stretchToFill = true) where T : Component
+    {
+        return AddContent<T>(stretchToFill, 0);
+    }
+
+    public T AddContentLast<T>(bool stretchToFill = true) where T : Component
+    {
+        return AddContent<T>(stretchToFill, -1);
+    }
+
+    public GameObject AddStandardContent(Ux_TonkersTableTopiaStandardContentType contentType, bool stretchToFill = true, int siblingIndex = -1)
+    {
+        RectTransform parent = GetCachedRectTransform();
+        if (parent == null)
+            return null;
+
+        return CreateAndAttachContent(
+            () => Ux_TonkersTableTopiaContentFactory.Create(parent, contentType),
+            stretchToFill,
+            siblingIndex,
+            false);
+    }
+
+    private GameObject CreateAndAttachContent(Func<GameObject> factory, bool stretchToFill, int siblingIndex, bool registerUndo)
+    {
+        GameObject content = factory?.Invoke();
+        if (content == null)
+            return null;
+
+        if (!AttachContent(content, stretchToFill, siblingIndex))
+            return null;
+
+        if (registerUndo)
+            Ux_TonkersTableTopiaObjectUtility.RegisterCreatedObject(content, "Add Cell Content");
+
+        NotifyTableLayoutChanged();
+        return content;
+    }
+
+    public Ux_TonkersTableTopiaLayout AddNestedTable(bool ensureSnapToFill = true)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null)
+        {
+            return null;
+        }
+
+        Ux_TonkersTableTopiaLayout child = table.CreateChildTableInCellLikeABaby(RowIndex, ColumnIndex);
+        if (child == null || !ensureSnapToFill)
+        {
+            return child;
+        }
+
+        RectTransform childRect = child.GetComponent<RectTransform>();
+        if (childRect != null)
+        {
+            childRect.SnapCroutonToFillParentLikeGravy();
+        }
+
+        table.FlagLayoutAsNeedingSpaDay();
+        return child;
+    }
+
+    public void ClearHostedContent(bool includeInactive = true)
+    {
+        if (GetCachedRectTransform() == null)
+            return;
+
+        CollectHostedContent(includeInactive);
+
+        for (int i = 0; i < _foreignScratch.Count; i++)
+            Ux_TonkersTableTopiaObjectUtility.DestroyObject(_foreignScratch[i].gameObject, "Clear Cell Content");
+
+        NotifyTableLayoutChanged();
+    }
+
+    public int CountHostedContent(bool includeInactive = true)
+    {
+        if (GetCachedRectTransform() == null)
+            return 0;
+
+        CollectHostedContent(includeInactive);
+        return _foreignScratch.Count;
+    }
+
+    private void CollectHostedContent(bool includeInactive)
+    {
+        RectTransform rect = GetCachedRectTransform();
+        _foreignScratch.Clear();
+
+        if (rect == null)
+            return;
+
+        for (int i = 0; i < rect.childCount; i++)
+        {
+            Transform child = rect.GetChild(i);
+
+            if (!includeInactive && !child.gameObject.activeInHierarchy)
+                continue;
+
+            if (!Ux_TonkersTableTopiaHierarchyRules.IsForeignContent(child))
+                continue;
+
+            _foreignScratch.Add(child);
+        }
+    }
+
+    private bool AttachContent(GameObject content, bool stretchToFill, int siblingIndex)
+    {
+        if (content == null)
+        {
+            return false;
+        }
+
+        RectTransform parent = GetCachedRectTransform();
+        if (parent == null)
+        {
+            return false;
+        }
+
+        RectTransform childRect = content.GetComponent<RectTransform>();
+        if (childRect == null)
+        {
+            childRect = Ux_TonkersTableTopiaObjectUtility.GetOrAddComponent<RectTransform>(content);
+        }
+
+        if (childRect == null)
+        {
+            return false;
+        }
+
+        if (childRect.parent != parent)
+        {
+            Ux_TonkersTableTopiaObjectUtility.SetParent(childRect, parent, "Add Cell Content");
+        }
+
+        if (stretchToFill)
+        {
+            childRect.SnapCroutonToFillParentLikeGravy();
+        }
+
+        ApplySiblingIndex(childRect, siblingIndex, parent);
+        return true;
+    }
+
+    private static void ApplySiblingIndex(RectTransform childRect, int siblingIndex, RectTransform parent)
+    {
+        if (childRect == null || parent == null)
+        {
+            return;
+        }
+
+        if (siblingIndex >= 0)
+        {
+            childRect.SetSiblingIndex(Mathf.Clamp(siblingIndex, 0, parent.childCount - 1));
+            return;
+        }
+
+        childRect.SetAsLastSibling();
+    }
+
+    private void NotifyTableLayoutChanged()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table != null)
+        {
+            table.FlagLayoutAsNeedingSpaDay();
+        }
+    }
+
+    [Obsolete("Use AddNestedTable instead.")]
     public Ux_TonkersTableTopiaLayout AddNestedTableLikeRussianDoll(bool ensureSnapToFill = true)
     {
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t == null) return null;
-        int r = GetRowIndexLikeCornDog();
-        int c = GetColumnIndexLikeCornDog();
-        var kid = t.CreateChildTableInCellLikeABaby(r, c);
-        if (kid != null && ensureSnapToFill)
-        {
-            var rt = kid.GetComponent<RectTransform>();
-            if (rt != null) rt.SnapCroutonToFillParentLikeGravy();
-            t.FlagLayoutAsNeedingSpaDay();
-        }
-        return kid;
+        return AddNestedTable(ensureSnapToFill);
     }
 
+    [Obsolete("Use RectTransformComponent instead.")]
     public RectTransform GetRectLikeYogaMat()
     {
-        return GetComponent<RectTransform>();
+        return RectTransformComponent;
     }
 
+    [Obsolete("Use Table instead.")]
     public Ux_TonkersTableTopiaLayout GetTableLikeFamilyReunion()
     {
-        return GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
+        return Table;
     }
 
+    [Obsolete("Use RowIndex instead.")]
     public int GetRowIndexLikeCornDog()
     {
-        return rowNumberWhereThePartyIs;
+        return RowIndex;
     }
 
+    [Obsolete("Use ColumnIndex instead.")]
     public int GetColumnIndexLikeCornDog()
     {
-        return columnNumberPrimeRib;
+        return ColumnIndex;
     }
 
+    [Obsolete("Use AddStandardContent(Button) instead.")]
     public GameObject AddButtonBellyFlopLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateButtonBellyFlop();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Button, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Image) instead.")]
     public GameObject AddImageCheeseburgerLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateImageCheeseburger();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Image, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(RawImage) instead.")]
     public GameObject AddRawImageNachosLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateRawImageNachos();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.RawImage, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Text) instead.")]
     public GameObject AddTextDadJokesLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateTextDadJokes();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Text, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Toggle) instead.")]
     public GameObject AddToggleFlipFlopLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateToggleFlipFlop();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Toggle, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Slider) instead.")]
     public GameObject AddSliderSlipNSlideLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateSliderSlipNSlide();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Slider, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Scrollbar) instead.")]
     public GameObject AddScrollbarScootLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateScrollbarScoot();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Scrollbar, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(ScrollRect) instead.")]
     public GameObject AddScrollRectScooterLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateScrollRectScooter();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.ScrollRect, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(InputField) instead.")]
     public GameObject AddInputFieldChattyCathyLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateInputFieldChattyCathy();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.InputField, snapToFill, atSiblingIndex);
     }
 
+    [Obsolete("Use AddStandardContent(Dropdown) instead.")]
     public GameObject AddDropdownDropItLikeItsHotLikeEasyButton(bool snapToFill = true, int atSiblingIndex = -1)
     {
-        var parent = GetComponent<RectTransform>();
-        if (parent == null) return null;
-        var go = parent.CreateDropdownDropItLikeItsHot();
-        var rt = go != null ? go.GetComponent<RectTransform>() : null;
-        if (rt != null)
-        {
-            if (snapToFill) rt.SnapCroutonToFillParentLikeGravy();
-            if (atSiblingIndex >= 0) rt.SetSiblingIndex(Mathf.Clamp(atSiblingIndex, 0, parent.childCount - 1));
-            else rt.SetAsLastSibling();
-        }
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-        return go;
+        return AddStandardContent(Ux_TonkersTableTopiaStandardContentType.Dropdown, snapToFill, atSiblingIndex);
     }
 
-    public GameObject AddForeignFirstLikeDoorDash(GameObject prefab, bool snapToFill = true)
-    {
-        return AddForeignKidLikeDoorDash(prefab, snapToFill, 0);
-    }
-
+    [Obsolete("Use AddContentLast instead.")]
     public GameObject AddForeignLastLikeDoorDash(GameObject prefab, bool snapToFill = true)
     {
-        return AddForeignKidLikeDoorDash(prefab, snapToFill, -1);
+        return AddContentLast(prefab, snapToFill);
     }
 
-    public T AddForeignFirstLikeDoorDash<T>(bool snapToFill = true) where T : Component
-    {
-        return AddForeignKidLikeDoorDash<T>(snapToFill, 0);
-    }
-
+    [Obsolete("Use AddContentLast<T> instead.")]
     public T AddForeignLastLikeDoorDash<T>(bool snapToFill = true) where T : Component
     {
-        return AddForeignKidLikeDoorDash<T>(snapToFill, -1);
-    }
-
-    public void ClearForeignKidsLikeVacuum(bool includeInactive = true)
-    {
-        var rt = GetComponent<RectTransform>();
-        if (rt == null) return;
-
-        var bin = new List<Transform>(rt.childCount);
-        for (int i = 0; i < rt.childCount; i++)
-        {
-            var ch = rt.GetChild(i);
-            if (!includeInactive && !ch.gameObject.activeInHierarchy) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
-            bin.Add(ch);
-        }
-
-        for (int i = 0; i < bin.Count; i++)
-        {
-            var g = bin[i].gameObject;
-#if UNITY_EDITOR
-            if (!Application.isPlaying) UnityEditor.Undo.DestroyObjectImmediate(g);
-            else
-#endif
-                Destroy(g);
-        }
-
-        var t = GetComponentInParent<Ux_TonkersTableTopiaLayout>(true);
-        if (t != null) t.FlagLayoutAsNeedingSpaDay();
-    }
-
-    public int CountForeignKidsLikeCensus(bool includeInactive = true)
-    {
-        var rt = GetComponent<RectTransform>();
-        if (rt == null) return 0;
-        int n = 0;
-        for (int i = 0; i < rt.childCount; i++)
-        {
-            var ch = rt.GetChild(i);
-            if (!includeInactive && !ch.gameObject.activeInHierarchy) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaLayout>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaRow>() != null) continue;
-            if (ch.GetComponent<Ux_TonkersTableTopiaCell>() != null) continue;
-            n++;
-        }
-        return n;
+        return AddContentLast<T>(snapToFill);
     }
 }
