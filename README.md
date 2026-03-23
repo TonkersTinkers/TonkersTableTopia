@@ -7,7 +7,7 @@ Tonkers Table Topia is a runtime and editor table system for Unity UGUI. It give
 You can click cells, drag resize handles, merge and unmerge, move contents between cells, drop hierarchy objects directly into the table, style rows and columns, and keep the whole thing working in edit mode and play mode without building your UI out of desperation and loose anchors.
 
 Quick video:
-
+[FYI: Outdated Early Version in Video]
 * [https://youtu.be/Ax740NRROhc](https://youtu.be/Ax740NRROhc)
 
 The game this editor was built for and used in:
