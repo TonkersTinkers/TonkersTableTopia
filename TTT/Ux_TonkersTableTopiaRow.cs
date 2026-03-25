@@ -58,6 +58,61 @@ public class Ux_TonkersTableTopiaRow : Ux_TonkersTableTopiaNodeBase
         return table.GetCellLikePizzaSlice(RowIndex, lastColumn, createIfMissing);
     }
 
+    public void SetFixedHeightPixelsLikeTapeMeasure(float heightPixels)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowFixedHeightPixelsLikeTapeMeasure(RowIndex, heightPixels);
+    }
+
+    public void SetPercentageHeightLikeASpreadsheet(float percentage01)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowPercentageLikeASpreadsheet(RowIndex, percentage01);
+    }
+
+    public void SetFlexibleHeightLikeYogaPants()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowFlexibleLikeYogaPants(RowIndex);
+    }
+
+    public float GetLiveHeightPixelsLikeTapeMeasure()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetLiveRowHeightPixelsLikeTapeMeasure(RowIndex);
+    }
+
+    public float GetStoredPercentageHeightLikeASpreadsheet()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetStoredRowPercentageLikeASpreadsheet(RowIndex);
+    }
+
     [Obsolete("Use AddContentAtFirstColumn instead.")]
     public GameObject AddForeignFirstColumnLikeDoorDash(GameObject prefab, bool snapToFill = true)
     {

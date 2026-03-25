@@ -12,6 +12,11 @@ internal static class Ux_TonkersTableTopiaHierarchyRules
         return t != null && t.GetComponent<Ux_TonkersTableTopiaRow>() != null;
     }
 
+    public static bool IsManagedColumn(Transform t)
+    {
+        return t != null && t.GetComponent<Ux_TonkersTableTopiaColumn>() != null;
+    }
+
     public static bool IsManagedCell(Transform t)
     {
         return t != null && t.GetComponent<Ux_TonkersTableTopiaCell>() != null;
@@ -29,11 +34,7 @@ internal static class Ux_TonkersTableTopiaHierarchyRules
 
     public static bool IsManagedScaffold(Transform t)
     {
-        return IsManagedLayout(t)
-            || IsManagedRow(t)
-            || IsManagedCell(t)
-            || IsColumnBackdropHost(t)
-            || IsColumnBackdrop(t);
+        return IsManagedLayout(t) || IsManagedRow(t) || IsManagedColumn(t) || IsManagedCell(t) || IsColumnBackdropHost(t) || IsColumnBackdrop(t);
     }
 
     public static bool IsForeignContent(Transform t)

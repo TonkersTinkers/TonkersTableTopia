@@ -4,6 +4,7 @@ using UnityEngine.UI;
 public static class Ux_TonkersTableTopiaLayoutEditingExtensions
 {
 #if UNITY_EDITOR
+
     public static void SelectAndPingLikeABeacon(this Object target)
     {
         if (target == null)
@@ -14,9 +15,15 @@ public static class Ux_TonkersTableTopiaLayoutEditingExtensions
         UnityEditor.Selection.activeObject = target;
         UnityEditor.EditorGUIUtility.PingObject(target);
     }
+
 #endif
 
     public static bool BulkDeleteColumnsLikeAChamp(this Ux_TonkersTableTopiaLayout table, int startColInclusive, int endColInclusive)
+    {
+        return BulkDeleteColumnsLikeAChamp(table, startColInclusive, endColInclusive, table != null && table.preserveExistingColumnWidthsWhenAddingOrDeleting);
+    }
+
+    public static bool BulkDeleteColumnsLikeAChamp(this Ux_TonkersTableTopiaLayout table, int startColInclusive, int endColInclusive, bool preserveExistingColumnWidths)
     {
         if (table == null || table.totalColumnsCountHighFive <= 1)
         {
@@ -28,11 +35,16 @@ public static class Ux_TonkersTableTopiaLayoutEditingExtensions
             startColInclusive,
             endColInclusive,
             col => IsColumnDeletionBlockedByMergers(table, col),
-            col => table.TryPolitelyDeleteColumn(col),
+            col => table.TryPolitelyDeleteColumn(col, preserveExistingColumnWidths),
             table);
     }
 
     public static bool BulkDeleteRowsLikeABoss(this Ux_TonkersTableTopiaLayout table, int startRowInclusive, int endRowInclusive)
+    {
+        return BulkDeleteRowsLikeABoss(table, startRowInclusive, endRowInclusive, table != null && table.preserveExistingRowHeightsWhenAddingOrDeleting);
+    }
+
+    public static bool BulkDeleteRowsLikeABoss(this Ux_TonkersTableTopiaLayout table, int startRowInclusive, int endRowInclusive, bool preserveExistingRowHeights)
     {
         if (table == null || table.totalRowsCountLetTheShowBegin <= 1)
         {
@@ -44,7 +56,7 @@ public static class Ux_TonkersTableTopiaLayoutEditingExtensions
             startRowInclusive,
             endRowInclusive,
             row => IsRowDeletionBlockedByMergers(table, row),
-            row => table.TryPolitelyDeleteRow(row),
+            row => table.TryPolitelyDeleteRow(row, preserveExistingRowHeights),
             table);
     }
 

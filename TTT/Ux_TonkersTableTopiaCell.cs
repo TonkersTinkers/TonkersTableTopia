@@ -374,4 +374,114 @@ public class Ux_TonkersTableTopiaCell : Ux_TonkersTableTopiaNodeBase
     {
         return AddContentLast<T>(snapToFill);
     }
+
+    public void SetRowFixedHeightPixelsLikeTapeMeasure(float heightPixels)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowFixedHeightPixelsLikeTapeMeasure(RowIndex, heightPixels);
+    }
+
+    public void SetRowPercentageHeightLikeASpreadsheet(float percentage01)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowPercentageLikeASpreadsheet(RowIndex, percentage01);
+    }
+
+    public void SetRowFlexibleHeightLikeYogaPants()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return;
+        }
+
+        table.SetRowFlexibleLikeYogaPants(RowIndex);
+    }
+
+    public void SetColumnFixedWidthPixelsLikeTapeMeasure(float widthPixels)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || ColumnIndex < 0)
+        {
+            return;
+        }
+
+        table.SetColumnFixedWidthPixelsLikeTapeMeasure(ColumnIndex, widthPixels);
+    }
+
+    public void SetColumnPercentageWidthLikeASpreadsheet(float percentage01)
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || ColumnIndex < 0)
+        {
+            return;
+        }
+
+        table.SetColumnPercentageLikeASpreadsheet(ColumnIndex, percentage01);
+    }
+
+    public void SetColumnFlexibleWidthLikeYogaPants()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || ColumnIndex < 0)
+        {
+            return;
+        }
+
+        table.SetColumnFlexibleLikeYogaPants(ColumnIndex);
+    }
+
+    public float GetLiveRowHeightPixelsLikeTapeMeasure()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetLiveRowHeightPixelsLikeTapeMeasure(RowIndex);
+    }
+
+    public float GetLiveColumnWidthPixelsLikeTapeMeasure()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || ColumnIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetLiveColumnWidthPixelsLikeTapeMeasure(ColumnIndex);
+    }
+
+    public float GetStoredRowPercentageHeightLikeASpreadsheet()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || RowIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetStoredRowPercentageLikeASpreadsheet(RowIndex);
+    }
+
+    public float GetStoredColumnPercentageWidthLikeASpreadsheet()
+    {
+        Ux_TonkersTableTopiaLayout table = GetCachedTable();
+        if (table == null || ColumnIndex < 0)
+        {
+            return 0f;
+        }
+
+        return table.GetStoredColumnPercentageLikeASpreadsheet(ColumnIndex);
+    }
 }
