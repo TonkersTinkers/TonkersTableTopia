@@ -218,28 +218,33 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
     public static void ShowForColumnHeader(Ux_TonkersTableTopiaLayout table, int colIndex)
     {
         var m = new GenericMenu();
-        var colTarget = (UnityEngine.Object)(table.FindFirstAwakeCellInColumnLikeCoffee(colIndex) ?? table.FetchCellRectTransformVIP(0, colIndex) ?? (table as Component));
+
+        UnityEngine.Object colTarget = table != null ? table.FetchColumnComponentVIP(colIndex) : null;
+        if (colTarget == null && table != null)
+        {
+            colTarget = table.FindFirstAwakeCellInColumnLikeCoffee(colIndex);
+        }
+
+        if (colTarget == null && table != null)
+        {
+            colTarget = table.FetchCellRectTransformVIP(0, colIndex);
+        }
+
+        if (colTarget == null)
+        {
+            colTarget = table;
+        }
+
         Action hl = table != null ? new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, colIndex, table.totalRowsCountLetTheShowBegin, 1)) : null;
-
         AddCancelSelectAndHighlightLikeABoss(m, colTarget, hl);
-
-        m.AddItem(new GUIContent("Column/Insert Left"), false, () =>
-        {
-            table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex));
-        });
-
-        m.AddItem(new GUIContent("Column/Insert Right"), false, () =>
-        {
-            table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex + 1));
-        });
-
+        m.AddItem(new GUIContent("Column/Insert Left"), false, () => { table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex)); });
+        m.AddItem(new GUIContent("Column/Insert Right"), false, () => { table.PerformEditorTableActionLikeABoss("Insert Column", () => table.InsertColumnLikeANinja(colIndex + 1)); });
         m.AddItem(new GUIContent("Column/Delete"), false, () =>
         {
             table.PerformEditorTableActionLikeABoss("Delete Column(s)", () =>
             {
                 int c0;
                 int c1;
-
                 if (Ux_TonkersTableTopiaLayoutEditor.TryFetchSelectedColumnRange(out c0, out c1) && c1 > c0)
                 {
                     if (!table.BulkDeleteColumnsLikeAChamp(c0, c1))
@@ -253,14 +258,8 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                 }
             });
         });
-
         m.AddSeparator("Column/");
-
-        m.AddItem(new GUIContent("Column/Distribute All Columns Evenly"), false, () =>
-        {
-            table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook());
-        });
-
+        m.AddItem(new GUIContent("Column/Distribute All Columns Evenly"), false, () => { table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook()); });
         m.AddSeparator("");
         AddAlignSubmenuForColumn(m, table, colIndex);
         m.ShowAsContext();
@@ -274,7 +273,22 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
 
         if (isColumnHandle)
         {
-            target = (UnityEngine.Object)(table.FindFirstAwakeCellInColumnLikeCoffee(splitIndex) ?? table.FetchCellRectTransformVIP(0, splitIndex) ?? (table as Component));
+            target = table != null ? table.FetchColumnComponentVIP(splitIndex) : null;
+            if (target == null && table != null)
+            {
+                target = table.FindFirstAwakeCellInColumnLikeCoffee(splitIndex);
+            }
+
+            if (target == null && table != null)
+            {
+                target = table.FetchCellRectTransformVIP(0, splitIndex);
+            }
+
+            if (target == null)
+            {
+                target = table;
+            }
+
             int c0 = Mathf.Clamp(splitIndex, 0, Mathf.Max(0, table.totalColumnsCountHighFive - 2));
             hl = new Action(() => Ux_TonkersTableTopiaLayoutEditor.SetHighlightLikeAGlowStick(table, 0, c0, table.totalRowsCountLetTheShowBegin, Mathf.Min(2, table.totalColumnsCountHighFive - c0)));
         }
@@ -297,24 +311,15 @@ public static class Ux_TonkersTableTopiaContextMenuGravyBoat
                     table.SplitTwoColumnsEvenlyLikePeas(splitIndex);
                 });
             });
-
             AddPercentSettersForColumns(table, m, splitIndex);
             m.AddSeparator("Resize/");
-
-            m.AddItem(new GUIContent("Resize/Distribute All Columns Evenly"), false, () =>
-            {
-                table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook());
-            });
+            m.AddItem(new GUIContent("Resize/Distribute All Columns Evenly"), false, () => { table.PerformEditorTableActionLikeABoss("Distribute Columns", () => table.DistributeAllColumnsEvenlyLikeAShortOrderCook()); });
         }
         else
         {
             AddPercentSettersForRows(table, m, splitIndex);
             m.AddSeparator("Resize/");
-
-            m.AddItem(new GUIContent("Resize/Distribute All Rows Evenly"), false, () =>
-            {
-                table.PerformEditorTableActionLikeABoss("Distribute Rows", () => table.DistributeAllRowsEvenlyLikeAShortOrderCook());
-            });
+            m.AddItem(new GUIContent("Resize/Distribute All Rows Evenly"), false, () => { table.PerformEditorTableActionLikeABoss("Distribute Rows", () => table.DistributeAllRowsEvenlyLikeAShortOrderCook()); });
         }
 
         m.ShowAsContext();

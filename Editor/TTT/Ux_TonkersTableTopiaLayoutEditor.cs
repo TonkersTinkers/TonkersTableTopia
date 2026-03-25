@@ -1596,6 +1596,19 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         {
             var rt = _cachedTableRT != null ? _cachedTableRT : (_cachedTableRT = table.GetComponent<RectTransform>());
             var parent = rt ? rt.transform.parent as RectTransform : null;
+
+            EditorGUI.BeginChangeCheck();
+            bool autoHugWidth = EditorGUILayout.Toggle("Auto Hug Width", table.autoHugWidthLikeAGoodFriend);
+            bool autoHugHeight = EditorGUILayout.Toggle("Auto Hug Height", table.autoHugHeightBecauseWhyNot);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(table, "Edit Table Auto Hug");
+                table.autoHugWidthLikeAGoodFriend = autoHugWidth;
+                table.autoHugHeightBecauseWhyNot = autoHugHeight;
+                table.FlagLayoutAsNeedingSpaDay();
+                EditorUtility.SetDirty(table);
+            }
+
             bool usePercent = EditorPrefs.GetBool("Ux_TableSize_UsePercent", true);
             bool newUsePercent = EditorGUILayout.ToggleLeft("Size By Percent", usePercent);
             if (newUsePercent != usePercent)
@@ -1615,11 +1628,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
                     EditorUtility.SetDirty(rt);
                 }
             }
+
             if (newUsePercent)
             {
-                if (parent != null) EditorGUILayout.HelpBox("Table container scales with its parent. Adjust width% and height% to set the anchored span. Rows/columns use their own percent settings separately.", MessageType.None);
+                if (parent != null)
+                {
+                    EditorGUILayout.HelpBox("Table container scales with its parent. Adjust width% and height% to set the anchored span. Rows/columns use their own percent settings separately.", MessageType.None);
+                }
+
                 float curWPct = Mathf.Clamp01(rt.anchorMax.x - rt.anchorMin.x) * 100f;
                 float curHPct = Mathf.Clamp01(rt.anchorMax.y - rt.anchorMin.y) * 100f;
+
                 EditorGUI.BeginChangeCheck();
                 float wPct = EditorGUILayout.Slider("Width %", curWPct, 0f, 100f);
                 float hPct = EditorGUILayout.Slider("Height %", curHPct, 0f, 100f);
@@ -1635,9 +1654,14 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
             }
             else
             {
-                if (parent != null) EditorGUILayout.HelpBox("Table container uses fixed pixels. Type width/height to set size. Rows/columns sizing still controlled in their own sections.", MessageType.None);
+                if (parent != null)
+                {
+                    EditorGUILayout.HelpBox("Table container uses fixed pixels. Type width/height to set size. Rows/columns sizing still controlled in their own sections.", MessageType.None);
+                }
+
                 float w = Mathf.Max(0f, rt.rect.width);
                 float h = Mathf.Max(0f, rt.rect.height);
+
                 EditorGUI.BeginChangeCheck();
                 float newW = EditorGUILayout.FloatField("Width (px)", w);
                 float newH = EditorGUILayout.FloatField("Height (px)", h);
@@ -2177,11 +2201,20 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         table = (Ux_TonkersTableTopiaLayout)target;
         _cachedTableRT = table != null ? table.GetComponent<RectTransform>() : null;
 
+        if (table != null)
+        {
+            bool isPrefabAsset = PrefabUtility.IsPartOfPrefabAsset(table.gameObject);
+            bool isPrefabStageObject = UnityEditor.SceneManagement.PrefabStageUtility.GetPrefabStage(table.gameObject) != null;
+
+            if (isPrefabAsset || isPrefabStageObject)
+            {
+                table.MarkEditorUpgradeApplied();
+            }
+        }
+
         showPreview = EditorPrefs.GetBool("TTT_ShowPreview", true);
         sceneHighlight = EditorPrefs.GetBool("TTT_SceneHighlight", true);
-
         EnsureDefaultSelection();
-
         actionMode = (EditorActionMode)EditorPrefs.GetInt(PREF_ActionMode, (int)EditorActionMode.HighlightCells);
         highlightDragActive = false;
         dragCol = -1;
@@ -3171,6 +3204,17 @@ public class Ux_TonkersTableTopiaLayoutEditor : Editor
         using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
         {
             EditorGUILayout.LabelField("Structure", EditorStyles.boldLabel);
+
+            EditorGUI.BeginChangeCheck();
+            bool preserveRows = EditorGUILayout.Toggle("Preserve Row Heights", table.preserveExistingRowHeightsWhenAddingOrDeleting);
+            bool preserveColumns = EditorGUILayout.Toggle("Preserve Column Widths", table.preserveExistingColumnWidthsWhenAddingOrDeleting);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(table, "Edit Structure Preserve Settings");
+                table.preserveExistingRowHeightsWhenAddingOrDeleting = preserveRows;
+                table.preserveExistingColumnWidthsWhenAddingOrDeleting = preserveColumns;
+                EditorUtility.SetDirty(table);
+            }
 
             bool hasSelection = HasSelection();
 

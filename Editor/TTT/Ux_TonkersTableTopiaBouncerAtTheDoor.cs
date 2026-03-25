@@ -15,9 +15,11 @@ using static Ux_TonkersTableTopiaEditorExtensions;
 [InitializeOnLoad]
 internal static class Ux_TonkersTableTopiaBouncerAtTheDoor
 {
-    private static readonly Type[] s_TableRoyalty = {
+    private static readonly Type[] s_TableRoyalty =
+    {
         typeof(Ux_TonkersTableTopiaLayout),
         typeof(Ux_TonkersTableTopiaRow),
+        typeof(Ux_TonkersTableTopiaColumn),
         typeof(Ux_TonkersTableTopiaCell),
     };
 
@@ -35,24 +37,32 @@ internal static class Ux_TonkersTableTopiaBouncerAtTheDoor
 
     public static void OnComponentWasAddedPleaseAndThankYou(Component compyMcSneaky)
     {
-        if (compyMcSneaky == null) return;
+        if (compyMcSneaky == null)
+        {
+            return;
+        }
+
         var go = compyMcSneaky.gameObject;
-        if (go == null) return;
+        if (go == null)
+        {
+            return;
+        }
 
         var row = go.GetComponent<Ux_TonkersTableTopiaRow>();
+        var column = go.GetComponent<Ux_TonkersTableTopiaColumn>();
         var cell = go.GetComponent<Ux_TonkersTableTopiaCell>();
         var table = go.GetComponent<Ux_TonkersTableTopiaLayout>();
 
-        int tttCount =
-            (row != null ? 1 : 0) +
-            (cell != null ? 1 : 0) +
-            (table != null ? 1 : 0);
-
-        if (tttCount <= 1) return;
+        int tttCount = (row != null ? 1 : 0) + (column != null ? 1 : 0) + (cell != null ? 1 : 0) + (table != null ? 1 : 0);
+        if (tttCount <= 1)
+        {
+            return;
+        }
 
         string other =
-            (row != null && compyMcSneaky != row) ? nameof(Ux_TonkersTableTopiaRow) :
-            (cell != null && compyMcSneaky != cell) ? nameof(Ux_TonkersTableTopiaCell) :
+            row != null && compyMcSneaky != row ? nameof(Ux_TonkersTableTopiaRow) :
+            column != null && compyMcSneaky != column ? nameof(Ux_TonkersTableTopiaColumn) :
+            cell != null && compyMcSneaky != cell ? nameof(Ux_TonkersTableTopiaCell) :
             nameof(Ux_TonkersTableTopiaLayout);
 
         string msg = $"Invalid operation, can't add {compyMcSneaky.GetType().Name} to {go.name} because {other} is already on this GameObject. A GameObject can only contain one TableTopia component.";
@@ -60,10 +70,7 @@ internal static class Ux_TonkersTableTopiaBouncerAtTheDoor
 
         if (compyMcSneaky is Ux_TonkersTableTopiaLayout freshlyMintedTable)
         {
-            DeferEditorSafe(() =>
-            {
-                TryVacuumTableScaffoldLikeRoomba(freshlyMintedTable);
-            });
+            DeferEditorSafe(() => { TryVacuumTableScaffoldLikeRoomba(freshlyMintedTable); });
         }
     }
 
