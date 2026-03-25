@@ -1,6 +1,10 @@
 # Tonkers Table Topia (Unity UGUI)
 
-Simple UGUI tables that behave like tables.
+Simple UGUI tables that behave like, stretchable layout tables.
+
+* Created for designing Quick, Fast, Stretchable Layouts in seconds, that adapt to any resolution with minimum input from the designer.
+
+* Use the Nested Tables feature often, to easily get the look you desire.
 
 Tonkers Table Topia is a runtime and editor table system for Unity UGUI. It gives you real rows, columns, merges, nested tables, styling, alignment tools, and a WYSIWYG editing workflow that feels like working with an actual table instead of wrestling random RectTransforms into submission.
 
@@ -8,6 +12,7 @@ You can click cells, drag resize handles, merge and unmerge, move contents betwe
 
 Quick video:
 [FYI: Outdated Early Version in Video]
+[Feel free to make an updated tutorial and I will link it here]
 * [https://youtu.be/Ax740NRROhc](https://youtu.be/Ax740NRROhc)
 
 The game this editor was built for and used in:
