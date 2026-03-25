@@ -1,18 +1,18 @@
 # Tonkers Table Topia (Unity UGUI)
 
-Simple UGUI tables that behave like, stretchable layout tables.
+Simple UGUI tables that behave like stretchable layout tables.
 
-* Created for designing Quick, Fast, Stretchable Layouts in seconds, that adapt to any resolution with minimum input from the designer.
-
-* Use the Nested Tables feature often, to easily get the look you desire.
+* Created for designing quick, fast, stretchable layouts in seconds, that adapt to any resolution with minimum input from the designer.
+* Use the nested tables feature often, to easily get the look you desire.
 
 Tonkers Table Topia is a runtime and editor table system for Unity UGUI. It gives you real rows, columns, merges, nested tables, styling, alignment tools, and a WYSIWYG editing workflow that feels like working with an actual table instead of wrestling random RectTransforms into submission.
 
 You can click cells, drag resize handles, merge and unmerge, move contents between cells, drop hierarchy objects directly into the table, style rows and columns, and keep the whole thing working in edit mode and play mode without building your UI out of desperation and loose anchors.
 
-Quick video:
-[FYI: Outdated Early Version in Video]
+Quick video:  
+[FYI: Outdated Early Version in Video]  
 [Feel free to make an updated tutorial and I will link it here]
+
 * [https://youtu.be/Ax740NRROhc](https://youtu.be/Ax740NRROhc)
 
 The game this editor was built for and used in:
@@ -31,6 +31,7 @@ Tonkers Table Topia gives UGUI a real table model with a matching editor workflo
 * Runtime-safe movement and adoption of foreign UI content.
 * Alignment helpers for cells, selections, rows, columns, and whole tables.
 * A WYSIWYG table editor with headers, selection tools, resize handles, zoom, scrolling, context menus, and scene highlighting.
+* Dedicated runtime row, column, and cell components for direct scripting access.
 
 This is still plain UGUI. No external package is required.
 
@@ -41,10 +42,11 @@ This is still plain UGUI. No external package is required.
 * WYSIWYG preview with row and column headers.
 * Click to select a cell.
 * Shift-click and drag to extend the selection rectangle.
+* Drag to paint a rectangular cell selection.
 * Row header and column header selection.
+* Top-left header selection for the whole table.
 * Double-click a cell with a nested table to jump into it.
 * Unified editor modes:
-
   * Highlight
   * Resize
   * Select
@@ -53,11 +55,11 @@ This is still plain UGUI. No external package is required.
 * Scrollable preview canvas for larger tables.
 * Zoom slider with Fit and 1:1 buttons.
 * Ctrl or Cmd + mouse wheel zoom in the preview.
+* Persistent Preview and Scene toggles in the toolbar.
 * Scene highlight for selected cells.
 * Per-cell badges showing detected UI content and nested tables.
 * Toggle for showing or hiding preview badges.
 * Right-click context menus on:
-
   * cells
   * row headers
   * column headers
@@ -76,35 +78,38 @@ This is still plain UGUI. No external package is required.
 * Unmerge everything inside a selected rectangle.
 * Bulk delete safety checks for merges and minimum row or column limits.
 * Smart handling of foreign children and nested tables during structure edits.
+* Optional preservation of current resolved row heights when inserting or deleting rows.
+* Optional preservation of current resolved column widths when inserting or deleting columns.
 
 ### Sizing and layout
 
 * Mixed row and column sizing:
-
   * positive values = fixed pixels
   * negative values = percent of inner available size
   * zero = flexible share of remaining space
 * Blueprint-style scaling for positive fixed row and column values.
 * Per-table design size capture and reuse.
-* One-click capture of the current RectTransform size as the table design size.
+* One-click capture of the current `RectTransform` size as the table design size.
 * Inspector editing of fixed values using live resolved pixels.
 * Inspector editing of percent values using live computed percentages.
 * Drag resize handles in the WYSIWYG preview.
 * Live resize HUD showing starting value, new value, and percent delta for the two affected rows or columns.
 * Distribute all rows evenly.
 * Distribute all columns evenly.
-* Split two adjacent columns evenly from a handle context menu.
+* Split two adjacent columns evenly.
+* Split two adjacent rows evenly.
 * Make last row flexible.
 * Make last column flexible.
 * Table container size controls:
-
   * size by anchored percent
   * size by fixed pixels
 * Automatic conversion helpers when switching sizing workflows.
 * Row and column spacing controls.
 * Table padding support.
+* Per-cell inner padding support for hosted content.
 * Optional auto hug width.
 * Optional auto hug height.
+* Optional auto-add `ContentSizeFitter` to each cell.
 * Horizontal and vertical extra-space alignment for the whole table.
 
 ### Visual styling
@@ -116,7 +121,6 @@ This is still plain UGUI. No external package is required.
 * Per-column background sprites and tints.
 * Per-column simple or sliced rendering.
 * Column backdrop modes:
-
   * repeated across cell spans
   * one stretched backdrop for the whole column
 * Per-cell background sprite and tint.
@@ -130,7 +134,6 @@ This is still plain UGUI. No external package is required.
 ### Alignment tools
 
 * Cell-level alignment:
-
   * Left
   * Center
   * Right
@@ -144,14 +147,15 @@ This is still plain UGUI. No external package is required.
 * Table-level alignment.
 * Detection helpers so editor buttons can reflect current alignment state.
 * Alignment helpers also work for foreign content hosted inside cells.
+* Full-stretch content and cell padding are respected by the alignment helpers.
 
 ### Content helpers and UI spawning
 
 * Drag external hierarchy objects into table cells from the editor.
 * Add common UGUI controls to cells from context menus.
+* Editor quick-add menu also includes an Empty Panel helper.
 * Add arbitrary prefab content to a cell, row, column, or table through runtime helpers.
-* Supported quick content helpers include:
-
+* Supported runtime standard content helpers include:
   * Button
   * Image
   * RawImage
@@ -164,6 +168,7 @@ This is still plain UGUI. No external package is required.
   * Dropdown
 * Runtime content factory enum for standard content creation.
 * Content counting, clearing, listing, and type classification helpers.
+* Direct row, column, and cell component APIs for adding content and nested tables.
 
 ### Nested tables
 
@@ -179,13 +184,15 @@ This is still plain UGUI. No external package is required.
 * Runtime-safe layout refresh in edit mode and play mode.
 * Queued play mode refresh using `Canvas.willRenderCanvases`.
 * Pooling for managed row and cell scaffold objects.
-* Cached row and cell component access.
+* Dedicated managed column backdrop objects.
+* Cached row, column, and cell component access.
 * Cached background image access on managed nodes.
 * Centralized hierarchy and object utility helpers.
 * Centralized foreign content movement and restore helpers.
 * Centralized editor-safe deferred actions.
 * Better undo coverage for structure and style edits in the editor.
 * Cleaner managed hierarchy naming than the original version.
+* Editor guard that rejects invalid multiple TableTopia components on the same `GameObject`.
 
 ## Installation
 
@@ -197,7 +204,7 @@ Copy the editor scripts into your project, for example:
 
 `Assets/Editor/TonkersTableTopia/`
 
-The package includes the main layout, row, and cell components plus supporting runtime extensions, utilities, content helpers, sizing helpers, alignment helpers, editor extensions, inspectors, and context menu tooling.
+The package includes the main layout, row, column, and cell components plus supporting runtime extensions, utilities, content helpers, sizing helpers, alignment helpers, editor extensions, inspectors, and context menu tooling.
 
 Add **Tonkers Table Topia** to a `RectTransform` under a Canvas:
 
@@ -213,12 +220,13 @@ Add **Tonkers Table Topia** to a `RectTransform` under a Canvas:
 4. Insert, delete, merge, unmerge, distribute, and align directly from the inspector or context menus.
 5. Switch to Resize mode and drag split handles to resize rows and columns.
 6. Use the design-size controls if you want fixed pixel specs to scale relative to an authored table size.
-7. Style the table using row, column, cell, and table background settings.
-8. Enable zebra stripes, spacing, and padding where needed.
-9. Use Move mode to move foreign content or nested tables between cells.
-10. Drag hierarchy objects directly into cells in the preview.
-11. Add nested child tables to cells where needed.
-12. Use runtime helpers to add content, inspect cells, merge ranges, or rebuild layout during play.
+7. Choose whether row and column sizes should be preserved when inserting or deleting structure.
+8. Style the table using row, column, cell, and table background settings.
+9. Enable zebra stripes, spacing, padding, and cell inner padding where needed.
+10. Use Move mode to move foreign content or nested tables between cells.
+11. Drag hierarchy objects directly into cells in the preview.
+12. Add nested child tables to cells where needed.
+13. Use runtime helpers to add content, inspect cells, merge ranges, or rebuild layout during play.
 
 ## Core Concepts
 
@@ -303,7 +311,7 @@ Useful consequences:
 
 * queries can return distinct main cells only
 * selection logic can resolve back to the true main cell
-* move operations and some editor operations now start from the merged main cell instead of an arbitrary covered cell
+* move operations and some editor operations start from the merged main cell instead of an arbitrary covered cell
 
 ### 10. Nested tables
 
@@ -319,6 +327,18 @@ The system distinguishes between:
 * foreign content, meaning your real UI objects
 
 Foreign content is preserved and reparented carefully during layout rebuilds, merges, deletes, moves, and hierarchy adoption.
+
+### 12. Cell inner padding
+
+Cells can optionally define their own inner content padding:
+
+* `useInnerPaddingPillowFort`
+* `innerPaddingLeftMarshmallow`
+* `innerPaddingRightMarshmallow`
+* `innerPaddingTopMarshmallow`
+* `innerPaddingBottomMarshmallow`
+
+Full-stretch hosted content, alignment helpers, and snap-to-fill helpers respect this padding.
 
 ## WYSIWYG Editor Workflow
 
@@ -436,12 +456,25 @@ Foreign content is preserved and reparented carefully during layout rebuilds, me
 * `ConvertCurrentColumnPixelsToStoredFixedLikeBlueprint(float currentPixels, float currentInnerWidth)`
 * `ConvertCurrentRowPixelsToStoredFixedLikeBlueprint(float currentPixels, float currentInnerHeight)`
 
+### Direct layout sizing setters and getters
+
+* `SetRowFixedHeightPixelsLikeTapeMeasure(int rowIndex, float currentPixels)`
+* `SetRowPercentageLikeASpreadsheet(int rowIndex, float percentage01)`
+* `SetRowFlexibleLikeYogaPants(int rowIndex)`
+* `GetStoredRowPercentageLikeASpreadsheet(int rowIndex)`
+* `SetColumnFixedWidthPixelsLikeTapeMeasure(int columnIndex, float currentPixels)`
+* `SetColumnPercentageLikeASpreadsheet(int columnIndex, float percentage01)`
+* `SetColumnFlexibleLikeYogaPants(int columnIndex)`
+* `GetStoredColumnPercentageLikeASpreadsheet(int columnIndex)`
+
 ### Accessors and queries
 
 * `FetchRowRectTransformVIP(int index)`
 * `FetchCellRectTransformVIP(int row, int col)`
+* `FetchColumnRectTransformVIP(int index)`
 * `FetchRowComponentVIP(int index)`
 * `FetchCellComponentVIP(int row, int col)`
+* `FetchColumnComponentVIP(int index)`
 * `GrabCellLikeItOwesYouRent(this Ux_TonkersTableTopiaLayout table, int row, int col)`
 * `GetRowLikeBreadSlice(int row, bool createIfMissing = false)`
 * `TryGetRowLikePoliteWaiter(...)`
@@ -494,6 +527,7 @@ On table:
 * `AddForeignLastInCellLikeDoorDash(...)`
 * `AddForeignFirstRowInColumnLikeDoorDash(...)`
 * `AddForeignLastRowInColumnLikeDoorDash(...)`
+* `AddNestedTableToCellLikeRussianDoll(...)`
 
 On row:
 
@@ -501,6 +535,13 @@ On row:
 * `AddContentAtFirstColumn(...)`
 * `AddContentAtLastColumn(...)`
 * `AddNestedTableAtColumn(...)`
+
+On column:
+
+* `AddContentAtRow(...)`
+* `AddContentAtFirstRow(...)`
+* `AddContentAtLastRow(...)`
+* `AddNestedTableAtRow(...)`
 
 On cell:
 
@@ -512,12 +553,53 @@ On cell:
 * `ClearHostedContent(...)`
 * `CountHostedContent(...)`
 
+### Component conveniences
+
+On row component:
+
+* `RectTransformComponent`
+* `GetTable()`
+* `RowIndex`
+* `SetFixedHeightPixelsLikeTapeMeasure(...)`
+* `SetPercentageHeightLikeASpreadsheet(...)`
+* `SetFlexibleHeightLikeYogaPants()`
+* `GetLiveHeightPixelsLikeTapeMeasure()`
+* `GetStoredPercentageHeightLikeASpreadsheet()`
+
+On column component:
+
+* `RectTransformComponent`
+* `GetTable()`
+* `ColumnIndex`
+* `SetFixedWidthPixelsLikeTapeMeasure(...)`
+* `SetPercentageWidthLikeASpreadsheet(...)`
+* `SetFlexibleWidthLikeYogaPants()`
+* `GetLiveWidthPixelsLikeTapeMeasure()`
+* `GetStoredPercentageWidthLikeASpreadsheet()`
+
+On cell component:
+
+* `RectTransformComponent`
+* `Table`
+* `RowIndex`
+* `ColumnIndex`
+* `SetRowFixedHeightPixelsLikeTapeMeasure(...)`
+* `SetRowPercentageHeightLikeASpreadsheet(...)`
+* `SetRowFlexibleHeightLikeYogaPants()`
+* `SetColumnFixedWidthPixelsLikeTapeMeasure(...)`
+* `SetColumnPercentageWidthLikeASpreadsheet(...)`
+* `SetColumnFlexibleWidthLikeYogaPants()`
+* `GetLiveRowHeightPixelsLikeTapeMeasure()`
+* `GetLiveColumnWidthPixelsLikeTapeMeasure()`
+* `GetStoredRowPercentageHeightLikeASpreadsheet()`
+* `GetStoredColumnPercentageWidthLikeASpreadsheet()`
+
 ### Standard content factory
 
 * `Ux_TonkersTableTopiaStandardContentType`
 * `Ux_TonkersTableTopiaContentFactory.Create(...)`
 
-Supported standard content:
+Supported runtime standard content:
 
 * Button
 * Image
@@ -559,7 +641,7 @@ Supported standard content:
 
 The current version is more modular than the original release.
 
-The old giant extension-heavy implementation has been split into focused runtime and editor support classes, including sizing helpers, content helpers, alignment helpers, query helpers, foreign-content utilities, object utilities, hierarchy rules, pooled scaffold management, cached node behavior, editor helpers, and safer wrapped editor action flows.
+The old giant extension-heavy implementation has been split into focused runtime and editor support classes, including sizing helpers, content helpers, alignment helpers, query helpers, foreign-content utilities, object utilities, hierarchy rules, pooled scaffold management, cached node behavior, dedicated managed column backdrop support, editor helpers, and safer wrapped editor action flows.
 
 A compatibility shell still exists:
 
@@ -606,6 +688,7 @@ Uses standard UGUI components such as:
 * The system works in edit mode and play mode.
 * The codebase is more modular and maintainable than the original giant-extension version.
 * Managed hierarchy naming and runtime scaffolding are cleaner than before.
+* You now get dedicated row, column, and cell components for direct scripting workflows.
 
 ## Keywords and Search Terms
 
@@ -639,12 +722,17 @@ Core runtime and editor entry points include:
 
 * `Ux_TonkersTableTopiaLayout.cs`
 * `Ux_TonkersTableTopiaRow.cs`
+* `Ux_TonkersTableTopiaColumn.cs`
 * `Ux_TonkersTableTopiaCell.cs`
 * `Ux_TonkersTableTopiaLayoutEditor.cs`
 * `Ux_TonkersTableTopiaRowEditor.cs`
+* `Ux_TonkersTableTopiaColumnEditor.cs`
 * `Ux_TonkersTableTopiaCellEditor.cs`
 * `Ux_TonkersTableTopiaContextMenuGravyBoat.cs`
 * `Ux_TonkersTableTopiaBouncerAtTheDoor.cs`
+* `Ux_TonkersTableTopiaColumnBackdrop.cs`
+* `Ux_TonkersTableTopiaColumnBackdropHost.cs`
+* `Ux_TonkersTableTopiaNodeBase.cs`
 
 The current version also uses supporting runtime and editor helper classes for:
 
@@ -664,212 +752,42 @@ The current version also uses supporting runtime and editor helper classes for:
 
 ### New features
 
-* Added blueprint-style scaling for positive fixed row and column sizes:
-
-  * `scaleFixedSizesWithResolutionLikeBlueprint`
-  * `designSizeForThisTableLikeBlueprint`
-* Added table-local design size capture:
-
-  * `CaptureCurrentRectAsDesignSizeLikeBlueprint()`
-* Added live size conversion helpers so editor pixel fields can work correctly even when stored values are blueprint-scaled fixed specs.
-* Added true runtime auto-hug width support.
-* Added full-column backdrop rendering support with dedicated column-wide art instead of only per-cell repeats.
-* Added column backdrop mode control:
-
-  * per-cell style across spans
-  * one stretched backdrop for the whole column
-* Added sliced or simple rendering control for:
-
-  * table background
-  * row backdrops
-  * column backdrops
-  * cell backgrounds
-* Added row-level leftover fill support:
-
-  * `RowStyle.lastVisibleCellEatsLeftovers`
-* Added live column and row size query helpers:
-
-  * `GetLiveColumnWidthPixelsLikeTapeMeasure`
-  * `GetLiveRowHeightPixelsLikeTapeMeasure`
-* Added percentage rebalance setters:
-
-  * `SetColumnPercentageAndRebalanceOthersLikeASpreadsheet`
-  * `SetRowPercentageAndRebalanceOthersLikeASpreadsheet`
-* Added a standard content enum and content factory for runtime UI creation.
-* Added higher-level row and cell content APIs:
-
-  * `AddContent`
-  * `AddContentAtColumn`
-  * `AddStandardContent`
-  * `AddNestedTable`
-  * `ClearHostedContent`
-  * `CountHostedContent`
-* Added cached row and cell component accessors:
-
-  * `FetchRowComponentVIP`
-  * `FetchCellComponentVIP`
-* Added reusable cached node behavior for row and cell components.
-* Added compact managed naming for rows, cells, nested tables, and column backdrop objects.
-* Added a unified editor design-size header with:
-
-  * design size display
-  * fixed-size blueprint scaling toggle
-  * use current rect capture button
-* Added a new WYSIWYG zoom workflow:
-
-  * scrollable preview
-  * zoom slider
-  * Fit button
-  * 1:1 button
-  * Ctrl or Cmd + mouse wheel zoom
-* Added preview badge toggle for editor-wide WYSIWYG display.
-* Added drag rectangle selection in Highlight mode.
-* Added preview rendering of real cell, row, and column background art in the WYSIWYG panel.
-* Added mode-specific editor workbench panels for:
-
-  * structure
-  * merge
-  * resize utilities
-  * selection
-  * move workflow
-  * alignment
-* Added persistent preview and scene highlight toggles through `EditorPrefs`.
-* Added safer editor action wrappers through centralized editor extension helpers.
+* Added a real runtime `Ux_TonkersTableTopiaColumn` component with its own inspector workflow.
+* Added preserve-existing-size options for structure edits:
+  * `preserveExistingRowHeightsWhenAddingOrDeleting`
+  * `preserveExistingColumnWidthsWhenAddingOrDeleting`
+* Added per-cell inner padding support and editor controls.
+* Added optional auto-add `ContentSizeFitter` per cell:
+  * `autoHireContentSizerBecauseLazy`
+* Added row split helper:
+  * `SplitTwoRowsEvenlyLikePeas`
+* Added direct layout sizing setters and getters for rows and columns.
+* Added row, column, and cell component convenience wrappers for runtime sizing.
+* Added column-scoped runtime content helpers:
+  * `AddContentAtRow`
+  * `AddContentAtFirstRow`
+  * `AddContentAtLastRow`
+  * `AddNestedTableAtRow`
+* Added editor quick-add Empty Panel helper.
+* Added editor validation guard that rejects multiple TableTopia component types on one `GameObject`.
 
 ### Editor workflow improvements
 
-* Reworked the layout inspector into a clearer mode-driven workflow instead of keeping everything in one long flat block.
-* Replaced the old preview presentation with a proper scrollable zoomable canvas.
-* Added clearer mode banners and mode-specific helper text.
-* Added better separation between selection tools, structure tools, merge tools, resize tools, and move tools.
-* Added persistent Preview and Scene toggle buttons in the toolbar itself.
-* Added direct column and row style editing that understands blueprint-scaled fixed values.
-* Replaced the old global “Fixed Widths” and “Fixed Heights” style of editing with per-style “Use Fixed Width” and “Use Fixed Height” controls.
-* Column inspectors now support:
-
-  * sliced background mode
-  * one stretched column backdrop mode
-* Row inspectors now support:
-
-  * sliced background mode
-  * last visible cell leftover fill toggle
-* Cell selection inspector now supports multi-cell background editing with sliced mode.
-* Turning off image sections now clears related visuals instead of only hiding UI.
-* The WYSIWYG preview now shows resolved backdrops instead of only generic row banding.
-* Badge collection in selections now works against distinct main cells instead of repeatedly listing mashed merged children.
-* Move mode now resolves merged selections back to their main source cell before moving content.
-* Header and context-menu actions now consistently go through safer wrapped editor table actions.
-* Editor deferred actions and repaint requests are centralized instead of duplicated ad hoc in multiple places.
+* Layout, row, column, and cell inspectors all understand the newer sizing helpers.
+* Column-specific inspector flow is now first-class instead of only being implied by style data.
+* Multi-cell selection editing covers shared cell visuals and shared inner padding values.
+* Resize handle context menus support both row and column percentage presets.
+* Row and column editing paths use the same safer wrapped editor action flow.
 
 ### Runtime behavior changes
 
-* The runtime is now split into focused extension and utility classes instead of keeping nearly everything in one giant runtime extension class.
-* Play mode layout refreshes are now queued and flushed from `Canvas.willRenderCanvases`.
-* Dirty state is tracked more cleanly for structure and layout changes.
-* Row and cell component caches are maintained during rebuilds.
-* Managed scaffold pooling is wrapped in dedicated pool logic.
-* Object creation, parenting, destruction, prefab instantiation, and undo-aware component flow are routed through centralized utilities.
-* Foreign content movement now uses stored `RectTransform` snapshots and restore logic instead of repeated copy-paste reparent code.
-* Background image components are reused and disabled more often instead of being constantly destroyed and recreated.
-* Horizontal extra-space alignment is part of the actual runtime placement pass.
-* Row leftover fill is now part of the actual runtime placement pass.
-* Fixed pixel specs can now behave like authored blueprint values instead of being treated as permanently absolute pixels.
-
-### Context menu and inspector changes
-
-* Column header distribute actions now use the real distribution helpers instead of manually forcing raw negative percentages.
-* Row header distribute actions now use the real distribution helpers instead of manually forcing raw negative percentages.
-* Table header distribute actions now use the real distribution helpers instead of manually forcing raw negative percentages.
-* Resize-handle percent presets now use the dedicated rebalance APIs instead of custom local scaling math.
-* Cell alignment context actions now use horizontal-only and vertical-only alignment calls where appropriate.
-* Row, column, and table alignment context actions are now routed through the wrapped editor action helper.
-* Column and row deletion from context menus now go through more consistent editor action wrappers.
-* Deferred return-to-table operations in row and cell inspectors now use centralized editor-safe helpers and force repaint more reliably afterward.
-
-### Bug fixes
-
-* Fixed `TryKindlyDeleteCell`. It now clears the targeted cell instead of incorrectly behaving like a whole-column delete path.
-* Fixed `autoHugWidthLikeAGoodFriend` so width hugging actually participates in runtime layout.
-* Fixed horizontal extra-space placement so `horizontalSchmoozingPreference` now affects actual runtime placement.
-* Fixed row leftover fill so `lastVisibleCellEatsLeftovers` is now used during layout.
-* Fixed several repeated `GetComponent`-heavy runtime paths by caching row and cell components.
-* Fixed duplicated reparenting logic by centralizing layout-preserving reparent helpers.
-* Fixed content movement paths to better preserve anchors, offsets, and sibling order.
-* Fixed row and column swap cache consistency by updating cached rect and component references together.
-* Fixed merged-cell content sweeping so it uses cached structure and cached access more consistently.
-* Fixed layout placement for mixed stretch and non-stretch anchor situations.
-* Fixed full-column art handling so real dedicated column-wide backdrops can exist instead of pretending everything is cell-local art.
-* Fixed background resolution flow so cell visuals can intentionally yield to column-wide backdrop mode.
-* Fixed editor validation reparent safety by deferring cleanup through centralized helpers.
-* Fixed image background churn by reusing and disabling image components instead of destroying and recreating them constantly.
-* Fixed WYSIWYG selection gathering across merged cells so combined inspectors work on distinct main cells.
-* Fixed move-source resolution for merged cells so moving content starts from the correct main seat.
-* Fixed resize math so dragging can preserve fixed, percent, and flexible semantics instead of flattening everything into one naive interpretation.
-* Fixed resize HUD reporting so it reflects percent change derived from actual resolved specs more accurately.
-* Fixed row and column style inspectors so displayed fixed pixel values reflect live resolved values under blueprint scaling.
-* Fixed preview hit-testing so merged top-left cells can consume the correct preview space when selection and dragging occur.
-* Fixed preview gap math so zoomed row and column spacing stays visually consistent.
-* Fixed table background editing so sliced mode can be edited directly from the inspector.
-* Fixed cell multi-edit background workflow so turning the image section off can actually clear cell sprites.
-
-### API additions and modernization
-
-* Added modern row APIs:
-
-  * `RectTransformComponent`
-  * `GetTable()`
-  * `RowIndex`
-  * `AddContentAtColumn`
-  * `AddContentAtFirstColumn`
-  * `AddContentAtLastColumn`
-  * `AddNestedTableAtColumn`
-* Added modern cell APIs:
-
-  * `RectTransformComponent`
-  * `Table`
-  * `RowIndex`
-  * `ColumnIndex`
-  * `AddContent`
-  * `AddContentFirst`
-  * `AddContentLast`
-  * `AddStandardContent`
-  * `AddNestedTable`
-  * `ClearHostedContent`
-  * `CountHostedContent`
-* Added `Ux_TonkersTableTopiaStandardContentType` for clearer runtime content spawning.
-* Added list-filling overloads for several query helpers to reduce avoidable allocations.
-* Added dedicated support helpers for:
-
-  * sizing
-  * content
-  * foreign content
-  * alignment
-  * object utilities
-  * hierarchy rules
-  * editor-safe actions
-* Kept older convenience methods as obsolete wrappers where practical so older calls still have a migration path.
-
-### Performance and maintenance improvements
-
-* Replaced the old monolithic runtime extension implementation with smaller focused modules.
-* Reduced runtime allocations with reusable scratch buffers and list-based query overloads.
-* Reduced rebuild spam by batching play mode updates through a canvas render hook.
-* Reduced repeated hierarchy scanning by using cached structure and explicit dirty flags.
-* Reduced repeated image lookup and creation through cached node visuals.
-* Consolidated distribution math into dedicated distribution utilities.
-* Consolidated alignment logic into dedicated alignment utilities.
-* Consolidated foreign content handling into dedicated foreign-content utilities.
-* Consolidated rect transform operations into dedicated rect transform utilities.
-* Consolidated editor deferred actions, repaint requests, and wrapped editor table actions into editor utility helpers.
-* Improved maintainability of inspectors and context menus by replacing repeated custom math with centralized APIs.
+* Runtime now maintains dedicated managed column backdrop objects with cached column components.
+* Row, column, and cell nodes share a cached node base for common `RectTransform`, table, and image access.
+* Content fill helpers and alignment helpers now respect cell inner padding.
+* Insert and delete operations can preserve existing live sizes by converting them back into stored fixed blueprint-aware values.
 
 ### Compatibility notes
 
-* `Ux_TonkersTableTopiaExtensions` is no longer the main implementation surface. It remains as a compatibility shell.
-* Several older row and cell helper names now act as wrappers around newer content APIs.
-* Runtime scaffold object names are shorter and more machine-like than before.
-* Full-column backdrops now create dedicated managed backdrop objects.
-* The default reset preset is different from the older minimal setup.
-* Positive fixed row and column specs can now scale relative to the table’s saved design size when blueprint scaling is enabled.
-* The editor now assumes the newer wrapped action flow and sizing conversion helpers are available.
-* Existing projects using the older table system should still migrate cleanly, but editor visuals and default behavior will feel more modern and more explicit than before.
+* `Ux_TonkersTableTopiaExtensions` is still only a compatibility shell.
+* Existing code that only used layout, row, and cell APIs still works, but column APIs are now also available directly.
+* Existing projects should migrate cleanly, but the editor now exposes more explicit row, column, cell, and sizing workflows than older versions.
